@@ -61,7 +61,6 @@
     "canvas": "latest",
     "sharp": "latest",
     "jsdom": "latest",
-    "@mozilla/readability": "latest",
     "html-minifier-terser": "latest"
   },
   "devDependencies": {
