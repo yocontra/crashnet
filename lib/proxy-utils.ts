@@ -1,5 +1,6 @@
 import { JSDOM } from "jsdom"
 import { Readability } from "@mozilla/readability"
+import { minify } from "html-minifier-terser"
 
 // List of attributes that were introduced after 1995 and should be removed
 const modernAttributes = [
@@ -9,7 +10,6 @@ const modernAttributes = [
   "itemscope",
   "itemtype",
   "itemprop",
-  "srcset",
   "integrity",
   "crossorigin",
   "loading",
@@ -31,29 +31,6 @@ const modernAttributes = [
   "part",
   "slot",
   "translate",
-]
-
-// List of allowed HTML tags for vintage browser compatibility
-const allowedTags = [
-  "a",
-  "ol",
-  "ul",
-  "li",
-  "br",
-  "p",
-  "small",
-  "font",
-  "b",
-  "strong",
-  "i",
-  "em",
-  "blockquote",
-  "h1",
-  "h2",
-  "h3",
-  "h4",
-  "h5",
-  "h6",
 ]
 
 export async function fetchAndSimplify(url: string): Promise<string> {
@@ -79,9 +56,6 @@ export async function fetchAndSimplify(url: string): Promise<string> {
 
         // Do not track to potentially get simpler content
         DNT: "1",
-
-        // For Google specifically
-        "X-Client-Data": "CIW2yQEIpLbJAQipncoBCKijygE=",
       },
     })
 
@@ -140,23 +114,41 @@ export async function fetchAndSimplify(url: string): Promise<string> {
     // Use the article content from Readability
     contentDiv.innerHTML = article.content
 
-    // Strip tags and only allow specific ones (similar to FrogFind)
-    const strippedContent = stripTagsExcept(contentDiv.innerHTML, allowedTags)
-
     // Replace modern tags with vintage equivalents
-    const processedContent = strippedContent
+    const contentHtml = contentDiv.innerHTML
       .replace(/<strong>/g, "<b>")
       .replace(/<\/strong>/g, "</b>")
       .replace(/<em>/g, "<i>")
       .replace(/<\/em>/g, "</i>")
 
-    contentDiv.innerHTML = processedContent
+    contentDiv.innerHTML = contentHtml
     newDocument.body.appendChild(contentDiv)
+
+    // Remove scripts
+    const scripts = newDocument.querySelectorAll("script")
+    scripts.forEach((script) => script.remove())
+
+    // Remove styles
+    const styles = newDocument.querySelectorAll('style, link[rel="stylesheet"]')
+    styles.forEach((style) => style.remove())
+
+    // Remove inline styles
+    const elementsWithStyle = newDocument.querySelectorAll("[style]")
+    elementsWithStyle.forEach((el) => el.removeAttribute("style"))
 
     // Process images in the content - redirect through image_proxy
     const images = newDocument.querySelectorAll("img")
     images.forEach((img) => {
-      const src = img.getAttribute("src")
+      // Handle srcset attribute if present
+      const srcset = img.getAttribute("srcset")
+      let src = img.getAttribute("src")
+
+      if (srcset && (!src || src === "")) {
+        // Parse srcset and select an appropriate source
+        src = selectSourceFromSrcset(srcset)
+        img.setAttribute("src", src)
+      }
+
       if (src) {
         // Handle relative URLs
         const absoluteSrc = new URL(src, url).toString()
@@ -211,9 +203,26 @@ export async function fetchAndSimplify(url: string): Promise<string> {
       removeModernAttributes(el)
     })
 
-    // Get the HTML and minify it
+    // Get the HTML
     let html = newDom.serialize()
-    html = minifyHtml(html)
+
+    // Minify the HTML using html-minifier-terser
+    html = await minify(html, {
+      collapseWhitespace: true,
+      removeComments: true,
+      removeRedundantAttributes: true,
+      removeScriptTypeAttributes: true,
+      removeStyleLinkTypeAttributes: true,
+      useShortDoctype: true,
+      minifyCSS: true,
+      minifyJS: false, // We're removing JS anyway
+      removeEmptyAttributes: true,
+      removeOptionalTags: true,
+      removeAttributeQuotes: true,
+      removeEmptyElements: false, // Keep empty elements like <br>
+      keepClosingSlash: false,
+      caseSensitive: false,
+    })
 
     return html
   } catch (error) {
@@ -222,19 +231,54 @@ export async function fetchAndSimplify(url: string): Promise<string> {
   }
 }
 
-// Function to strip all HTML tags except those in the allowedTags array
-function stripTagsExcept(html: string, allowedTags: string[]): string {
-  // Create a regular expression that matches all HTML tags
-  const allTagsRegex = /<\/?([a-z][a-z0-9]*)\b[^>]*>/gi
+// Function to select an appropriate source from srcset
+function selectSourceFromSrcset(srcset: string): string {
+  try {
+    // Split the srcset into individual sources
+    const sources = srcset.split(",").map((src) => src.trim())
 
-  return html.replace(allTagsRegex, (match, tag) => {
-    // If the tag is in the allowed list, keep it
-    if (allowedTags.includes(tag.toLowerCase())) {
-      return match
+    // Target width for vintage computers (aim for medium-sized images)
+    const targetWidth = 640
+
+    // Parse each source and extract URL and descriptor
+    const parsedSources = sources.map((source) => {
+      const [url, descriptor] = source.split(/\s+/)
+      let width = 0
+
+      // Parse width descriptor (e.g., "800w")
+      if (descriptor && descriptor.endsWith("w")) {
+        width = Number.parseInt(descriptor.slice(0, -1), 10)
+      }
+      // Parse density descriptor (e.g., "2x")
+      else if (descriptor && descriptor.endsWith("x")) {
+        const density = Number.parseFloat(descriptor.slice(0, -1))
+        width = targetWidth * density
+      }
+      // No descriptor, assume default width
+      else {
+        width = targetWidth
+      }
+
+      return { url, width }
+    })
+
+    // Sort by how close the width is to our target
+    parsedSources.sort((a, b) => {
+      return Math.abs(a.width - targetWidth) - Math.abs(b.width - targetWidth)
+    })
+
+    // Return the URL of the best match, or the first source if no match
+    return parsedSources.length > 0 ? parsedSources[0].url : ""
+  } catch (error) {
+    console.error("Error parsing srcset:", error)
+    // If there's an error, try to extract the first URL
+    const firstSource = srcset.split(",")[0]
+    if (firstSource) {
+      const url = firstSource.split(/\s+/)[0]
+      return url || ""
     }
-    // Otherwise, remove it
     return ""
-  })
+  }
 }
 
 // Function to remove modern attributes from an element
@@ -251,31 +295,4 @@ function removeModernAttributes(element: Element): void {
       element.removeAttribute(attr.name)
     }
   })
-}
-
-// Basic HTML minification function
-function minifyHtml(html: string): string {
-  return (
-    html
-      // Remove HTML comments
-      .replace(/<!--[\s\S]*?-->/g, "")
-      // Remove whitespace between tags
-      .replace(/>\s+</g, "><")
-      // Remove leading and trailing whitespace
-      .replace(/^\s+|\s+$/gm, "")
-      // Collapse multiple whitespace
-      .replace(/\s{2,}/g, " ")
-      // Remove unnecessary whitespace around attributes
-      .replace(/\s+=/g, "=")
-      .replace(/=\s+/g, "=")
-      // Remove optional closing tags for maximum compatibility
-      .replace(/<\/option>/g, "")
-      .replace(/<\/li>/g, "")
-      .replace(/<\/dt>/g, "")
-      .replace(/<\/dd>/g, "")
-      .replace(/<\/p>/g, "")
-      .replace(/<\/td>/g, "")
-      .replace(/<\/th>/g, "")
-      .replace(/<\/tr>/g, "")
-  )
 }
