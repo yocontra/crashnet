@@ -54,15 +54,25 @@ export async function fetchAndSimplify(url: string): Promise<string> {
     const dom = new JSDOM(content)
     const document = dom.window.document
 
-    // Add Crashnet header
+    // Add Crashnet minimal header
     const header = document.createElement("div")
     header.innerHTML = `
-      <center>
-        <h1>CRASHNET PROXY</h1>
-        <p>Viewing: ${url}</p>
-        <p><a href="/">Return to Homepage</a></p>
-        <hr>
-      </center>
+      <table width="100%" bgcolor="white" cellpadding="0" cellspacing="0" border="0">
+        <tr height="32">
+          <td width="150" align="left" valign="middle">
+            <form action="/" method="get">
+              <input type="submit" value="Back to CrashNet">
+            </form>
+          </td>
+          <td align="center" valign="middle">
+            <form action="/proxy" method="get" width="100%">
+              <input type="text" name="url" value="${url}" size="40">
+              <input type="submit" value="Go">
+            </form>
+          </td>
+        </tr>
+      </table>
+      <hr>
     `
     document.body.insertBefore(header, document.body.firstChild)
 
@@ -141,6 +151,9 @@ export async function fetchAndSimplify(url: string): Promise<string> {
     // Remove tables for maximum compatibility
     const tables = document.querySelectorAll("table")
     tables.forEach((table) => {
+      // Skip our header table
+      if (table.parentNode === header) return
+
       const div = document.createElement("div")
       div.innerHTML = table.textContent || ""
       table.parentNode?.replaceChild(div, table)
@@ -152,16 +165,13 @@ export async function fetchAndSimplify(url: string): Promise<string> {
       removeModernAttributes(el)
     })
 
-    // Add footer
-    const footer = document.createElement("div")
-    footer.innerHTML = `
-      <hr>
-      <center>
-        <p>Rendered by Crashnet - Vintage Computer Proxy</p>
-        <p><a href="/">Return to Homepage</a></p>
-      </center>
-    `
-    document.body.appendChild(footer)
+    // Remove the footer we previously added
+    const footers = document.querySelectorAll("div")
+    footers.forEach((div) => {
+      if (div.innerHTML.includes("Rendered by Crashnet")) {
+        div.remove()
+      }
+    })
 
     // Get the HTML and minify it
     let html = dom.serialize()

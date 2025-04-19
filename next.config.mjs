@@ -1,9 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Disable all JavaScript for client
+  // Disable unnecessary features for this minimal project
   reactStrictMode: true,
   poweredByHeader: false,
-  // Configure headers for better compatibility
+  
+  // Configure headers for better compatibility with vintage browsers
   async headers() {
     return [
       {
@@ -17,18 +18,29 @@ const nextConfig = {
             key: 'X-Content-Type-Options',
             value: 'nosniff',
           },
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=3600',
+          },
         ],
       },
     ]
   },
+  
+  // Disable image optimization since we're doing our own
+  images: {
+    unoptimized: true,
+  },
+  
+  // Minimize output size
+  output: 'standalone',
+  
+  // Disable unnecessary features during development
   eslint: {
     ignoreDuringBuilds: true,
   },
   typescript: {
     ignoreBuildErrors: true,
-  },
-  images: {
-    unoptimized: true,
   },
 }
 

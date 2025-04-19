@@ -1,30 +1,83 @@
-# New Project
+# Crashnet
 
-*Automatically synced with your [v0.dev](https://v0.dev) deployments*
+A minimalist web proxy service designed for vintage computers like 68k Macintoshes. Crashnet makes modern websites accessible to older systems by stripping SSL, CSS, JavaScript, and compressing images to JPEG.
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/eric-ss-projects-4f3db1d8/v0-new-project-1a7ll4kojys)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.dev-black?style=for-the-badge)](https://v0.dev/chat/projects/1a7LL4KOjYS)
+## Features
 
-## Overview
+- **Ultra-Minimal Design**: Works with pre-CSS browsers
+- **HTTP-Only**: No SSL, CSS, or JavaScript
+- **Image Compression**: Automatically compresses images to JPEG format
+- **Link Rewriting**: All links are rewritten to work through the proxy
+- **Modern Web Compatibility**: Access modern websites on vintage hardware
+- **Tiny File Sizes**: Optimized for slow connections and limited memory
 
-This repository will stay in sync with your deployed chats on [v0.dev](https://v0.dev).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.dev](https://v0.dev).
+## Getting Started
 
-## Deployment
+### Prerequisites
 
-Your project is live at:
+- Node.js 18.x or later
+- npm or yarn
 
-**[https://vercel.com/eric-ss-projects-4f3db1d8/v0-new-project-1a7ll4kojys](https://vercel.com/eric-ss-projects-4f3db1d8/v0-new-project-1a7ll4kojys)**
+### Installation
 
-## Build your app
+1. Clone the repository:
+   \`\`\`
+   git clone https://github.com/yourusername/crashnet.git
+   cd crashnet
+   \`\`\`
 
-Continue building your app on:
+2. Install dependencies:
+   \`\`\`
+   npm install
+   \`\`\`
 
-**[https://v0.dev/chat/projects/1a7LL4KOjYS](https://v0.dev/chat/projects/1a7LL4KOjYS)**
+3. Run the development server:
+   \`\`\`
+   npm run dev
+   \`\`\`
+
+4. Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+### Building for Production
+
+\`\`\`
+npm run build
+npm start
+\`\`\`
 
 ## How It Works
 
-1. Create and modify your project using [v0.dev](https://v0.dev)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+1. **Homepage (/)**: A simple form where users can enter a URL to browse
+2. **Proxy (/proxy?url=example.com)**: Fetches the target website, strips modern elements, and returns simplified HTML
+3. **Image Proxy (/image_proxy?url=image.jpg)**: Fetches images and compresses them to JPEG format
+
+## Technical Details
+
+- Built with Next.js (App Router) and TypeScript
+- Uses server-side rendering exclusively (no client-side JavaScript)
+- JSDOM for HTML parsing and manipulation
+- Sharp for image processing
+- Designed for compatibility with browsers from the early 1990s
+
+## Project Structure
+
+\`\`\`
+crashnet/
+├── app/                  # Next.js App Router
+│   ├── page.tsx          # Homepage
+│   ├── proxy/            # Proxy endpoint
+│   └── image_proxy/      # Image proxy endpoint
+├── components/           # React components
+│   └── ascii-logo.tsx    # ASCII art logo
+├── lib/                  # Utility functions
+│   └── proxy-utils.ts    # Proxy helper functions
+└── public/               # Static files
+\`\`\`
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
