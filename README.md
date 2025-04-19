@@ -63,15 +63,15 @@ npm start
 
 \`\`\`
 crashnet/
-├── app/                  # Next.js App Router
-│   ├── page.tsx          # Homepage
-│   ├── proxy/            # Proxy endpoint
-│   └── image_proxy/      # Image proxy endpoint
-├── components/           # React components
-│   └── ascii-logo.tsx    # ASCII art logo
-├── lib/                  # Utility functions
-│   └── proxy-utils.ts    # Proxy helper functions
-└── public/               # Static files
+├── app/ # Next.js App Router
+│ ├── page.tsx # Homepage
+│ ├── proxy/ # Proxy endpoint
+│ └── image_proxy/ # Image proxy endpoint
+├── components/ # React components
+│ └── ascii-logo.tsx # ASCII art logo
+├── lib/ # Utility functions
+│ └── proxy-utils.ts # Proxy helper functions
+└── public/ # Static files
 \`\`\`
 
 ## Contributing

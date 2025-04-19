@@ -3,7 +3,7 @@ const nextConfig = {
   // Disable unnecessary features for this minimal project
   reactStrictMode: true,
   poweredByHeader: false,
-  
+
   // Configure headers for better compatibility with vintage browsers
   async headers() {
     return [
@@ -26,15 +26,15 @@ const nextConfig = {
       },
     ]
   },
-  
+
   // Disable image optimization since we're doing our own
   images: {
     unoptimized: true,
   },
-  
+
   // Minimize output size
   output: 'standalone',
-  
+
   // Disable unnecessary features during development
   eslint: {
     ignoreDuringBuilds: true,
@@ -42,22 +42,20 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  
+
   // Disable Next.js scripts
   experimental: {
     // This disables the script optimization
     optimizePackageImports: [],
-    // Disable font optimization
-    fontLoaders: [],
   },
-  
+
   // Disable webpack features we don't need
   webpack: (config) => {
     // Disable client-side JavaScript
-    config.optimization.runtimeChunk = false;
-    config.optimization.minimize = true;
-    
-    return config;
+    config.optimization.runtimeChunk = false
+    config.optimization.minimize = true
+
+    return config
   },
 }
 

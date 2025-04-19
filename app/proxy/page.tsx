@@ -1,26 +1,45 @@
-import { fetchAndSimplify } from "@/lib/fetchAndSimplify"
+import { fetchURL, normalizeUrl, parseHTML } from '@/lib/fetch'
+import { simplify } from '@/lib/simplify'
+import { readify } from '@/lib/readify'
+import { minify } from 'html-minifier-terser'
 
-// Disable all automatic optimizations
-export const dynamic = "force-static"
-export const revalidate = false
-export const fetchCache = "force-no-store"
-export const runtime = "nodejs"
-export const preferredRegion = "auto"
+export const dynamic = 'force-dynamic'
 
-// Disable metadata
-export const generateMetadata = () => {
-  return { title: "Crashnet Proxy" }
+// HTML minification options
+const HTML_MINIFY_OPTIONS = {
+  collapseWhitespace: true,
+  removeComments: true,
+  removeRedundantAttributes: true,
+  removeScriptTypeAttributes: true,
+  removeStyleLinkTypeAttributes: true,
+  useShortDoctype: true,
+  minifyCSS: true,
+  minifyJS: false,
+  removeEmptyAttributes: true,
+  removeOptionalTags: true,
+  removeAttributeQuotes: true,
+  removeEmptyElements: false,
+  keepClosingSlash: false,
+  caseSensitive: false,
 }
 
 interface ProxyPageProps {
   searchParams: {
     url?: string
+    read?: string
   }
 }
 
-export default async function ProxyPage({ searchParams }: ProxyPageProps) {
-  const { url } = searchParams
+export default async function ProxyPage(props: ProxyPageProps) {
+  // Await search params to resolve
+  const searchParams = await Promise.resolve(props.searchParams)
 
+  // Now safely access the properties
+  const url = searchParams?.url
+  const read = searchParams?.read
+  const isReadMode = read === 'true'
+
+  // Error page if no URL provided
   if (!url) {
     return (
       <html>
@@ -41,27 +60,35 @@ export default async function ProxyPage({ searchParams }: ProxyPageProps) {
   }
 
   try {
-    // Normalize URL (add http:// if missing)
-    let normalizedUrl = url
-    // Add http:// if no protocol is specified
-    if (!normalizedUrl.startsWith("http://") && !normalizedUrl.startsWith("https://")) {
-      normalizedUrl = `http://${normalizedUrl}`
+    // Normalize URL (don't force HTTP in reader mode)
+    const normalizedUrl = normalizeUrl(url, !isReadMode)
+
+    // Fetch the content with appropriate headers based on mode
+    const htmlContent = await fetchURL(normalizedUrl, {}, !isReadMode)
+
+    // Parse the HTML into a DOM
+    const dom = parseHTML(htmlContent)
+
+    // Process content based on mode
+    let processedDom
+    if (isReadMode) {
+      processedDom = await readify(dom, normalizedUrl)
+    } else {
+      processedDom = await simplify(dom, normalizedUrl)
     }
-    // Replace https:// with http:// for vintage browser compatibility
-    normalizedUrl = normalizedUrl.replace("https://", "http://")
 
-    // Fetch and simplify the content
-    const { title, content } = await fetchAndSimplify(normalizedUrl)
+    // Minify the HTML
+    const html = await minify(processedDom.serialize(), HTML_MINIFY_OPTIONS)
 
-    // Extract the body content from the simplified HTML
-    const bodyMatch = content.match(/<body[^>]*>([\s\S]*)<\/body>/i)
-    const bodyContent = bodyMatch ? bodyMatch[1] : content
+    // Extract body content
+    const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i)
+    const bodyContent = bodyMatch ? bodyMatch[1] : html
 
-    // Return JSX instead of a Response object
+    // Return the processed page
     return (
       <html>
         <head>
-          <title>{`${title} - Crashnet`}</title>
+          <title>{processedDom.window.document.title || url}</title>
         </head>
         <body
           bgcolor="white"
@@ -73,6 +100,7 @@ export default async function ProxyPage({ searchParams }: ProxyPageProps) {
       </html>
     )
   } catch (error) {
+    // Error handling
     return (
       <html>
         <head>
@@ -81,7 +109,7 @@ export default async function ProxyPage({ searchParams }: ProxyPageProps) {
         <body bgcolor="white" text="black">
           <center>
             <h1>Error Fetching URL</h1>
-            <p>{error instanceof Error ? error.message : "Unknown error"}</p>
+            <p>{error instanceof Error ? error.message : 'Unknown error'}</p>
             <p>
               <a href="/">Return to Homepage</a>
             </p>
