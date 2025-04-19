@@ -9,11 +9,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Normalize URL (replace https:// with http://)
-    const normalizedUrl = url.replace("https://", "http://")
-
     // Fetch the image with vintage browser headers
-    const response = await fetch(normalizedUrl, {
+    const response = await fetch(url, {
       headers: {
         // Use a vintage browser User-Agent
         "User-Agent": "Mozilla/4.0 (compatible; MSIE 5.0; Mac_PowerPC)",

@@ -42,6 +42,23 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  
+  // Disable Next.js scripts
+  experimental: {
+    // This disables the script optimization
+    optimizePackageImports: [],
+    // Disable font optimization
+    fontLoaders: [],
+  },
+  
+  // Disable webpack features we don't need
+  webpack: (config) => {
+    // Disable client-side JavaScript
+    config.optimization.runtimeChunk = false;
+    config.optimization.minimize = true;
+    
+    return config;
+  },
 }
 
 export default nextConfig

@@ -59,8 +59,8 @@
     "vaul": "^0.9.6",
     "zod": "^3.24.1",
     "canvas": "latest",
-    "sharp": "latest",
     "jsdom": "latest",
+    "sharp": "latest",
     "html-minifier-terser": "latest"
   },
   "devDependencies": {

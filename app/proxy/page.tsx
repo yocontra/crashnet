@@ -1,4 +1,16 @@
-import { fetchAndSimplify } from "@/lib/proxy-utils"
+import { fetchAndSimplify } from "@/lib/fetchAndSimplify"
+
+// Disable all automatic optimizations
+export const dynamic = "force-static"
+export const revalidate = false
+export const fetchCache = "force-no-store"
+export const runtime = "nodejs"
+export const preferredRegion = "auto"
+
+// Disable metadata
+export const generateMetadata = () => {
+  return { title: "Crashnet Proxy" }
+}
 
 interface ProxyPageProps {
   searchParams: {
@@ -39,15 +51,26 @@ export default async function ProxyPage({ searchParams }: ProxyPageProps) {
     normalizedUrl = normalizedUrl.replace("https://", "http://")
 
     // Fetch and simplify the content
-    const simplifiedContent = await fetchAndSimplify(normalizedUrl)
+    const { title, content } = await fetchAndSimplify(normalizedUrl)
 
-    // Return the simplified content as HTML
+    // Extract the body content from the simplified HTML
+    const bodyMatch = content.match(/<body[^>]*>([\s\S]*)<\/body>/i)
+    const bodyContent = bodyMatch ? bodyMatch[1] : content
+
+    // Return JSX instead of a Response object
     return (
-      <html
-        dangerouslySetInnerHTML={{
-          __html: simplifiedContent.replace(/<!DOCTYPE html>|<html>|<\/html>/gi, ""),
-        }}
-      />
+      <html>
+        <head>
+          <title>{`${title} - Crashnet`}</title>
+        </head>
+        <body
+          bgcolor="white"
+          text="black"
+          link="blue"
+          vlink="purple"
+          dangerouslySetInnerHTML={{ __html: bodyContent }}
+        />
+      </html>
     )
   } catch (error) {
     return (
