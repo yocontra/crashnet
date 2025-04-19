@@ -1,5 +1,3 @@
-import { AsciiLogo } from "@/components/ascii-logo"
-
 export default function HomePage() {
   return (
     <html>
@@ -8,16 +6,13 @@ export default function HomePage() {
       </head>
       <body bgcolor="white" text="black">
         <center>
-          <AsciiLogo />
           <h1>CRASHNET</h1>
           <p>Web Proxy for Vintage Computers</p>
 
           <form action="/proxy" method="get">
             <p>Enter URL to browse:</p>
             <input type="text" name="url" size="40" />
-            <br />
-            <br />
-            <input type="submit" value="BROWSE" />
+            <input type="submit" value="Go" />
           </form>
 
           <hr width="75%" />

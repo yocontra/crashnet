@@ -1,4 +1,5 @@
 import { JSDOM } from "jsdom"
+import { Readability } from "@mozilla/readability"
 
 // List of attributes that were introduced after 1995 and should be removed
 const modernAttributes = [
@@ -32,14 +33,55 @@ const modernAttributes = [
   "translate",
 ]
 
+// List of allowed HTML tags for vintage browser compatibility
+const allowedTags = [
+  "a",
+  "ol",
+  "ul",
+  "li",
+  "br",
+  "p",
+  "small",
+  "font",
+  "b",
+  "strong",
+  "i",
+  "em",
+  "blockquote",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+]
+
 export async function fetchAndSimplify(url: string): Promise<string> {
   try {
-    // Fetch the URL
+    // Fetch the URL with headers that indicate an old browser
     const response = await fetch(url, {
       headers: {
-        "User-Agent": "Crashnet/1.0 Vintage Computer Proxy",
-        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Encoding": "gzip, deflate",
+        // Use a vintage browser User-Agent
+        "User-Agent": "Mozilla/4.0 (compatible; MSIE 5.0; Mac_PowerPC)",
+
+        // Indicate preference for simple HTML content
+        Accept: "text/html,text/plain",
+        "Accept-Language": "en-US,en;q=0.5",
+
+        // Limited encoding support
+        "Accept-Encoding": "identity",
+
+        // Indicate limited capabilities
+        "X-Requested-With": "XMLHttpRequest",
+
+        // Request simple content when available
+        "Save-Data": "on",
+
+        // Do not track to potentially get simpler content
+        DNT: "1",
+
+        // For Google specifically
+        "X-Client-Data": "CIW2yQEIpLbJAQipncoBCKijygE=",
       },
     })
 
@@ -51,11 +93,26 @@ export async function fetchAndSimplify(url: string): Promise<string> {
     const content = await response.text()
 
     // Parse the HTML
-    const dom = new JSDOM(content)
+    const dom = new JSDOM(content, { url })
     const document = dom.window.document
 
+    // Extract the page title
+    const pageTitle = document.title || url
+
+    // Use Readability to extract the main content
+    const reader = new Readability(document)
+    const article = reader.parse()
+
+    if (!article) {
+      throw new Error("Could not parse article content")
+    }
+
+    // Create a new document with just the readable content
+    const newDom = new JSDOM(`<!DOCTYPE html><html><head><title>${pageTitle}</title></head><body></body></html>`)
+    const newDocument = newDom.window.document
+
     // Add Crashnet minimal header
-    const header = document.createElement("div")
+    const header = newDocument.createElement("div")
     header.innerHTML = `
       <table width="100%" bgcolor="white" cellpadding="0" cellspacing="0" border="0">
         <tr height="32">
@@ -73,33 +130,31 @@ export async function fetchAndSimplify(url: string): Promise<string> {
         </tr>
       </table>
       <hr>
+      <h1>${pageTitle}</h1>
     `
-    document.body.insertBefore(header, document.body.firstChild)
+    newDocument.body.appendChild(header)
 
-    // Remove scripts
-    const scripts = document.querySelectorAll("script")
-    scripts.forEach((script) => script.remove())
+    // Create a content div
+    const contentDiv = newDocument.createElement("div")
 
-    // Remove styles
-    const styles = document.querySelectorAll('style, link[rel="stylesheet"]')
-    styles.forEach((style) => style.remove())
+    // Use the article content from Readability
+    contentDiv.innerHTML = article.content
 
-    // Remove inline styles
-    const elementsWithStyle = document.querySelectorAll("[style]")
-    elementsWithStyle.forEach((el) => el.removeAttribute("style"))
+    // Strip tags and only allow specific ones (similar to FrogFind)
+    const strippedContent = stripTagsExcept(contentDiv.innerHTML, allowedTags)
 
-    // Remove meta tags (post-1995)
-    const metaTags = document.querySelectorAll("meta")
-    metaTags.forEach((meta) => meta.remove())
+    // Replace modern tags with vintage equivalents
+    const processedContent = strippedContent
+      .replace(/<strong>/g, "<b>")
+      .replace(/<\/strong>/g, "</b>")
+      .replace(/<em>/g, "<i>")
+      .replace(/<\/em>/g, "</i>")
 
-    // Set body attributes for basic styling
-    document.body.setAttribute("bgcolor", "white")
-    document.body.setAttribute("text", "black")
-    document.body.setAttribute("link", "blue")
-    document.body.setAttribute("vlink", "purple")
+    contentDiv.innerHTML = processedContent
+    newDocument.body.appendChild(contentDiv)
 
-    // Process images - redirect through image_proxy
-    const images = document.querySelectorAll("img")
+    // Process images in the content - redirect through image_proxy
+    const images = newDocument.querySelectorAll("img")
     images.forEach((img) => {
       const src = img.getAttribute("src")
       if (src) {
@@ -131,7 +186,7 @@ export async function fetchAndSimplify(url: string): Promise<string> {
     })
 
     // Process links - redirect through proxy
-    const links = document.querySelectorAll("a")
+    const links = newDocument.querySelectorAll("a")
     links.forEach((link) => {
       const href = link.getAttribute("href")
       if (href && !href.startsWith("#") && !href.startsWith("javascript:")) {
@@ -144,37 +199,20 @@ export async function fetchAndSimplify(url: string): Promise<string> {
       removeModernAttributes(link)
     })
 
-    // Remove iframes
-    const iframes = document.querySelectorAll("iframe")
-    iframes.forEach((iframe) => iframe.remove())
-
-    // Remove tables for maximum compatibility
-    const tables = document.querySelectorAll("table")
-    tables.forEach((table) => {
-      // Skip our header table
-      if (table.parentNode === header) return
-
-      const div = document.createElement("div")
-      div.innerHTML = table.textContent || ""
-      table.parentNode?.replaceChild(div, table)
-    })
+    // Set body attributes for basic styling
+    newDocument.body.setAttribute("bgcolor", "white")
+    newDocument.body.setAttribute("text", "black")
+    newDocument.body.setAttribute("link", "blue")
+    newDocument.body.setAttribute("vlink", "purple")
 
     // Remove modern attributes from all elements
-    const allElements = document.querySelectorAll("*")
+    const allElements = newDocument.querySelectorAll("*")
     allElements.forEach((el) => {
       removeModernAttributes(el)
     })
 
-    // Remove the footer we previously added
-    const footers = document.querySelectorAll("div")
-    footers.forEach((div) => {
-      if (div.innerHTML.includes("Rendered by Crashnet")) {
-        div.remove()
-      }
-    })
-
     // Get the HTML and minify it
-    let html = dom.serialize()
+    let html = newDom.serialize()
     html = minifyHtml(html)
 
     return html
@@ -182,6 +220,21 @@ export async function fetchAndSimplify(url: string): Promise<string> {
     console.error("Error in fetchAndSimplify:", error)
     throw error
   }
+}
+
+// Function to strip all HTML tags except those in the allowedTags array
+function stripTagsExcept(html: string, allowedTags: string[]): string {
+  // Create a regular expression that matches all HTML tags
+  const allTagsRegex = /<\/?([a-z][a-z0-9]*)\b[^>]*>/gi
+
+  return html.replace(allTagsRegex, (match, tag) => {
+    // If the tag is in the allowed list, keep it
+    if (allowedTags.includes(tag.toLowerCase())) {
+      return match
+    }
+    // Otherwise, remove it
+    return ""
+  })
 }
 
 // Function to remove modern attributes from an element

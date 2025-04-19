@@ -12,8 +12,22 @@ export async function GET(request: NextRequest) {
     // Normalize URL (replace https:// with http://)
     const normalizedUrl = url.replace("https://", "http://")
 
-    // Fetch the image
-    const response = await fetch(normalizedUrl)
+    // Fetch the image with vintage browser headers
+    const response = await fetch(normalizedUrl, {
+      headers: {
+        // Use a vintage browser User-Agent
+        "User-Agent": "Mozilla/4.0 (compatible; MSIE 5.0; Mac_PowerPC)",
+
+        // Accept common image formats
+        Accept: "image/jpeg,image/gif,image/png,*/*",
+
+        // Limited encoding support
+        "Accept-Encoding": "identity",
+
+        // Do not track to potentially get simpler content
+        DNT: "1",
+      },
+    })
 
     if (!response.ok) {
       throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`)
