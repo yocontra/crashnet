@@ -1,4 +1,4 @@
-import { JSDOM } from 'jsdom'
+import { PlaywrightPage } from './fetch'
 import {
   addCrashnetHeader,
   handleAudioTags,
@@ -15,33 +15,24 @@ import {
   removeModernTags,
 } from './dom'
 
-export async function simplify(dom: JSDOM, url: string): Promise<JSDOM> {
-  // Save the original title before manipulation
-  const originalTitle = dom.window.document.title
+export async function simplify(pwPage: PlaywrightPage, url: string): Promise<PlaywrightPage> {
+  // Apply all transformations directly to the original page
+  await removeHiddenElements(pwPage)
+  await preserveComputed(pwPage)
 
-  const clonedDom = new JSDOM(dom.serialize())
-
-  // Also preserve the title in the cloned DOM
-  if (originalTitle) {
-    clonedDom.window.document.title = originalTitle
-  }
-
-  removeHiddenElements(clonedDom)
-  preserveComputed(clonedDom)
-
-  setBodyAttributes(clonedDom)
-  replaceModernTags(clonedDom)
-  handleImages(clonedDom, url, false)
-  handleSVGs(clonedDom)
-  processLinksForProxy(clonedDom, url)
-  handleVideoTags(clonedDom)
-  handleAudioTags(clonedDom, url)
+  await setBodyAttributes(pwPage)
+  await replaceModernTags(pwPage)
+  await handleImages(pwPage, url, false)
+  await handleSVGs(pwPage)
+  await processLinksForProxy(pwPage, url)
+  await handleVideoTags(pwPage)
+  await handleAudioTags(pwPage, url)
 
   // finally remove junk
-  removeModernTags(clonedDom)
-  removeUselessRoles(clonedDom)
-  removeModernAttributesFromAll(clonedDom)
+  await removeModernTags(pwPage)
+  await removeUselessRoles(pwPage)
+  await removeModernAttributesFromAll(pwPage)
 
-  addCrashnetHeader(clonedDom, url)
-  return clonedDom
+  await addCrashnetHeader(pwPage, url)
+  return pwPage
 }

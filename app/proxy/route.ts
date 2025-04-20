@@ -72,7 +72,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Minify the HTML
-    const html = await minify(processedDom.serialize(), HTML_MINIFY_OPTIONS)
+    const pageContent = await processedDom.serialize()
+    const html = await minify(pageContent, HTML_MINIFY_OPTIONS)
 
     // Extract body content using proper DOM parsing
     let bodyContent = html
@@ -110,6 +111,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     // Error handling
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    console.error(error)
     return new NextResponse(
       `<!DOCTYPE html>
       <html>

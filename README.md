@@ -1,16 +1,15 @@
 # Crashnet
 
-A minimalist web proxy service designed for vintage computers like 68k Macintoshes. Crashnet makes modern websites accessible to older systems by stripping SSL, CSS, JavaScript, and compressing images to JPEG.
+A minimalist web proxy service designed for vintage computers like 68k Macintoshes. Crashnet makes modern websites accessible to older systems by stripping SSL, CSS, JavaScript, and compressing images to JPEG. Targets HTML available in 1994, and tested against MacWeb on a Macintosh Plus.
 
 ## Features
 
-- **Ultra-Minimal Design**: Works with pre-CSS browsers
 - **HTTP-Only**: No SSL, CSS, or JavaScript
-- **Supports All Images**: Automatically compresses images to JPEG format
-- **Link Rewriting**: All links are rewritten to work through the proxy
-- **Modern Web Compatibility**: Access modern websites on vintage hardware
-- **Supports JS**: Loads and executes JS before packaging the page up for older browsers (Works with React and other SPA-style applications)
-- **DOM Reconstruction**: Creates a virtual DOM and uses getComputedStyle to transform CSS based styling to older attributes and semantic elements
+- **Uses a real browser**: Loads and executes the page in a real browser, so JS and CSS are executed and page layout completes before packaging it up and simplifying it for vintage browsers
+- **Ultra-Minimal Design**: Works with pre-CSS browsers
+- **Supports All Images**: Automatically compresses images to JPEG format, even supports SVGs
+- **Link Rewriting**: All links are rewritten to work through the proxy, even audio/video embeds get turned into downloads
+- **DOM Reconstruction**: Uses getComputedStyle to transform CSS based styling to older attributes and semantic elements
 - **Dual-mode**: Features a reading mode (optimized for text like blog posts, articles) and web mode (optimized for everything else)
 - **Form Support**: Supports interacting with services with forms + POST requests
 - **Tiny File Sizes**: Optimized for slow connections and limited memory
@@ -28,7 +27,7 @@ A minimalist web proxy service designed for vintage computers like 68k Macintosh
   - Height/width
   - Border (sometimes)
   - Font
-- Support some kind of cookie jar w/ JSDOM
+- Support some kind of cookie jar w/ accounts or unique ids
 
 ## Getting Started
 

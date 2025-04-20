@@ -1,7 +1,7 @@
-import { JSDOM } from 'jsdom'
 import { Readability } from '@mozilla/readability'
 import { getCrashnetHeader } from './header'
 import { handleImages, processLinksForProxy, handleSVGs } from './dom'
+import { PlaywrightPage } from './fetch'
 
 export interface ReadableResult {
   title: string
@@ -10,51 +10,55 @@ export interface ReadableResult {
   excerpt?: string
 }
 
-export async function readify(dom: JSDOM, url: string): Promise<JSDOM> {
-  // Save the original title before manipulation
-  const originalTitle = dom.window.document.title
-
-  // Clone the DOM to avoid modifying the original
-  const clonedDom = new JSDOM(dom.serialize())
-
-  // Also preserve the title in the cloned DOM
-  if (originalTitle) {
-    clonedDom.window.document.title = originalTitle
-  }
-
-  // Use Mozilla's Readability to extract the article content
-  const reader = new Readability(clonedDom.window.document)
-  const article = reader.parse()
+export async function readify(pwPage: PlaywrightPage, url: string): Promise<PlaywrightPage> {
+  // Extract article content using Readability directly in the browser context
+  const article = await pwPage.page.evaluate(() => {
+    // This runs in the browser context with Readability already loaded
+    const reader = new Readability(document)
+    return reader.parse()
+  })
 
   if (!article) {
     throw new Error('Could not parse article content')
   }
 
-  // Get the article content - prefer article title from Readability, but fall back to original title if needed
-  const { title = originalTitle, content } = article
+  // Get article title and content
+  const { title, content } = article
 
-  // Add our header and make the dom
-  const articleDom = new JSDOM(
-    `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>${title || dom.window.document.title || url}</title>
-      </head>
-      <body>
-        <div>
-          ${getCrashnetHeader(url, true)}
-        </div>
-        ${content}
-      </body>
-    </html>
-  `
+  // Create header outside of browser context
+  const header = getCrashnetHeader(url, true)
+
+  // Set the article content directly in the current page
+  await pwPage.page.evaluate(
+    (params) => {
+      const { title, content, pageTitle, url, header } = params
+      document.open()
+      document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>${title || pageTitle || url}</title>
+        </head>
+        <body>
+          <div>
+            ${header}
+          </div>
+          ${content}
+        </body>
+      </html>
+    `)
+      document.close()
+    },
+    { title, content, pageTitle: pwPage.title, url, header }
   )
 
-  // Process URLs for images and links
-  handleImages(articleDom, url, true)
-  handleSVGs(clonedDom)
-  processLinksForProxy(articleDom, url, true)
+  // Update the page title in our object
+  pwPage.title = title || pwPage.title || url
 
-  return articleDom
+  // Process URLs for images and links
+  await handleImages(pwPage, url, true)
+  await handleSVGs(pwPage)
+  await processLinksForProxy(pwPage, url, true)
+
+  return pwPage
 }

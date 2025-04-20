@@ -1,5 +1,5 @@
-import { DOMWindow } from 'jsdom'
-import { JSDOM } from 'jsdom'
+import { chromium, Browser, Page } from 'playwright'
+import { VIEWPORT_WIDTH, VIEWPORT_HEIGHT } from './config'
 
 // Define base URL for the application
 export const APP_BASE_URL = process.env.NEXT_PUBLIC_APP_BASE_URL || 'http://localhost:3000'
@@ -99,35 +99,80 @@ export async function fetchURL(
   return response.text()
 }
 
-// Function to wait for window load event
-function waitForWindowLoad(window: DOMWindow): Promise<void> {
-  return new Promise((resolve) => {
-    if (window.document.readyState === 'complete') {
-      // If already loaded, resolve after a small timeout
-      setTimeout(resolve, 100)
-      return
-    }
-
-    window.addEventListener('load', () => {
-      // Give it a bit more time just in case
-      setTimeout(resolve, 100)
-    })
-  })
+// PlaywrightPage interface to match the JSDOM interface for compatibility
+export interface PlaywrightPage {
+  window: {
+    document: Document
+    getComputedStyle: (element: Element) => CSSStyleDeclaration
+    XMLSerializer: new () => XMLSerializer
+  }
+  serialize: () => string
+  page: Page
+  browser: Browser
+  title: string
 }
 
-export async function loadPage(html: string, baseUrl?: string): Promise<JSDOM> {
-  const dom = new JSDOM(html, {
-    url: baseUrl,
-    pretendToBeVisual: true,
-    resources: 'usable',
-    runScripts: 'dangerously',
-    referrer: baseUrl,
-    contentType: 'text/html',
-    includeNodeLocations: true,
-    storageQuota: 10000000,
+// Get a browser instance with a singleton pattern
+let browserInstance: Browser | null = null
+async function getBrowser(): Promise<Browser> {
+  if (!browserInstance) {
+    browserInstance = await chromium.launch({
+      headless: true,
+    })
+  }
+  return browserInstance
+}
+
+export async function loadPage(html: string, baseUrl?: string): Promise<PlaywrightPage> {
+  const browser = await getBrowser()
+  const context = await browser.newContext({
+    userAgent: 'Mozilla/5.0 (compatible; Crashnet/1.0; +http://crashnet.example)',
+    viewport: { width: VIEWPORT_WIDTH, height: VIEWPORT_HEIGHT },
+    deviceScaleFactor: 1, // Low DPI to prefer low resolution images
+    ignoreHTTPSErrors: true,
+    // Use a mobile device profile to prefer mobile/smaller images
+    isMobile: true,
+    hasTouch: true,
   })
 
-  await waitForWindowLoad(dom.window)
+  const page = await context.newPage()
 
-  return dom
+  // If we have direct HTML content and a baseUrl, we'll navigate to the baseUrl
+  // and then set the content to ensure resources load correctly
+  if (baseUrl) {
+    await page.goto(baseUrl, { waitUntil: 'networkidle' })
+    if (html && html.trim().length > 0) {
+      await page.setContent(html, { waitUntil: 'networkidle' })
+    }
+  } else {
+    // If we just have HTML content, set it directly
+    await page.setContent(html, { waitUntil: 'networkidle' })
+  }
+
+  // Create a PlaywrightPage object that has similar capabilities to JSDOM
+  const title = await page.title()
+
+  // Access to the document through evaluate
+  const pwPage: PlaywrightPage = {
+    window: {
+      document: await page.evaluate(() => document),
+      getComputedStyle: (element: Element) => {
+        return page.evaluate(
+          (el) => getComputedStyle(el),
+          element
+        ) as unknown as CSSStyleDeclaration
+      },
+      // We don't need to provide XMLSerializer as we're using it in browser context
+      XMLSerializer: {} as any,
+    },
+    serialize: () => {
+      // Return a promise that resolves to the page content
+      return page.content()
+    },
+    page, // Expose the actual playwright page
+    browser, // Expose the browser instance
+    title,
+  }
+
+  return pwPage
 }
