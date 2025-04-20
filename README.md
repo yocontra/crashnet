@@ -1,6 +1,6 @@
 # Crashnet
 
-![logo](https://github.com/user-attachments/assets/b046a392-150c-47bf-9744-0ca3ed4e7c0e)
+<img src="https://github.com/user-attachments/assets/b046a392-150c-47bf-9744-0ca3ed4e7c0e" width="200" alt="logo">
 
 A minimalist web proxy service designed for vintage computers like 68k Macintoshes. Crashnet makes modern websites accessible to older systems by stripping SSL, CSS, JavaScript, and compressing images to JPEG. Targets HTML available in 1994, and tested against MacWeb on a Macintosh Plus.
 
