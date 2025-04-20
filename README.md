@@ -15,7 +15,7 @@ A minimalist web proxy service designed for vintage computers like 68k Macintosh
 - **Form Support**: Supports interacting with services with forms + POST requests
 - **Tiny File Sizes**: Optimized for slow connections and limited memory. Uses specially crafted DOM minification on the final output.
 - **Opinionated**: Optimizes for a functional experience - attempting to degrade newer HTML to something still usable
-- **Built-in Adblock**: Removes junk from the page and speeds things up by using ghostery adblock w/ easylist
+- **Built-in Adblock**: Removes junk from the page and speeds things up by using adblock w/ easylist/annoyance list
 
 ## TODO
 

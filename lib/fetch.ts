@@ -1,4 +1,6 @@
 import { Browser, Page, chromium } from 'playwright'
+import { PlaywrightBlocker } from '@ghostery/adblocker-playwright'
+import { fetch as crossFetch } from 'cross-fetch'
 import { VIEWPORT_WIDTH, VIEWPORT_HEIGHT } from './config'
 
 // Define base URL for the application - should be determined at runtime from request
@@ -111,20 +113,39 @@ export interface PlaywrightPage {
   title: string
 }
 
-// Note: Adblocker functionality has been temporarily removed
-// Will be re-implemented in a future update
-
-// Get a browser instance with a singleton pattern
+// Adblocker implementation
+let blockerInstance: PlaywrightBlocker | null = null
 let browserInstance: Browser | null = null
 
+async function initializeBlocker(): Promise<PlaywrightBlocker> {
+  if (!blockerInstance) {
+    // Initialize with EasyList, Fanboy's Annoyance List, and Fanboy's Social Blocking List
+    blockerInstance = await PlaywrightBlocker.fromLists(
+      crossFetch,
+      [
+        // EasyList (main adblock list)
+        'https://easylist.to/easylist/easylist.txt',
+        // Fanboy's Annoyance List (blocks popups, newsletter signups, etc.)
+        'https://easylist.to/easylist/fanboy-annoyance.txt',
+        // Fanboy's Social Blocking List (blocks social media widgets)
+        'https://easylist.to/easylist/fanboy-social.txt',
+      ],
+      {
+        enableCompression: true,
+        enableOptimizations: true,
+      }
+    )
+  }
+  return blockerInstance
+}
+
+// Get a browser instance with a singleton pattern
 async function getBrowser(): Promise<Browser> {
   if (!browserInstance) {
     // Launch browser with headless mode
     browserInstance = await chromium.launch({
       headless: true,
     })
-
-    // Adblocker initialization will be added back later
   }
   return browserInstance
 }
@@ -143,7 +164,9 @@ export async function loadPage(html: string, baseUrl?: string): Promise<Playwrig
 
   const page = await context.newPage()
 
-  // Ad blocking functionality will be re-added in the future
+  // Enable ad blocking
+  const blocker = await initializeBlocker()
+  await blocker.enableBlockingInPage(page)
 
   // If we have direct HTML content and a baseUrl, we'll navigate to the baseUrl
   // and then set the content to ensure resources load correctly
