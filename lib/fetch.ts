@@ -27,9 +27,18 @@ export interface FetchOptions {
   headers?: Record<string, string>
 }
 
-// Function to check if a URL is absolute
+// Function to check if a URL is absolute using URL API
 export function isAbsoluteUrl(url: string): boolean {
-  return !!url.match(/^[a-zA-Z]+:\/\//)
+  try {
+    // Use URL constructor - it will throw if the URL is not absolute without a base
+    new URL(url)
+
+    // Check if it has a protocol
+    return url.includes('://')
+  } catch (error) {
+    // If URL constructor throws, it's relative
+    return false
+  }
 }
 
 // Function to get an absolute URL from a potentially relative URL

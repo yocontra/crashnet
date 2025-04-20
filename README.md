@@ -11,6 +11,19 @@ A minimalist web proxy service designed for vintage computers like 68k Macintosh
 - **Modern Web Compatibility**: Access modern websites on vintage hardware
 - **Tiny File Sizes**: Optimized for slow connections and limited memory
 
+## TODO
+
+- Emoji -> svg/png via imagemoji or twemoji
+- video rendering by pulling the first frame, clicking it would go to download
+- Incorporate an adblocker to hide even more crap
+- Some images are going 520x520 for no reason
+- We can use dom.window.getComputedStyle! Things we can move from CSS/styles to DOM properties:
+  - Font color
+  - Background color
+  - Height/width
+  - Border (sometimes)
+  - Font
+
 ## Getting Started
 
 ### Prerequisites
@@ -21,29 +34,32 @@ A minimalist web proxy service designed for vintage computers like 68k Macintosh
 ### Installation
 
 1. Clone the repository:
-   \`\`\`
-   git clone https://github.com/yourusername/crashnet.git
+
+   ```
+   git clone https://github.com/yocontra/crashnet.git
    cd crashnet
-   \`\`\`
+   ```
 
 2. Install dependencies:
-   \`\`\`
+
+   ```
    npm install
-   \`\`\`
+   ```
 
 3. Run the development server:
-   \`\`\`
+
+   ```
    npm run dev
-   \`\`\`
+   ```
 
 4. Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
 ### Building for Production
 
-\`\`\`
+```
 npm run build
 npm start
-\`\`\`
+```
 
 ## How It Works
 
@@ -61,7 +77,7 @@ npm start
 
 ## Project Structure
 
-\`\`\`
+```
 crashnet/
 ├── app/ # Next.js App Router
 │ ├── page.tsx # Homepage
@@ -72,7 +88,7 @@ crashnet/
 ├── lib/ # Utility functions
 │ └── proxy-utils.ts # Proxy helper functions
 └── public/ # Static files
-\`\`\`
+```
 
 ## Contributing
 

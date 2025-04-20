@@ -50,9 +50,14 @@ export async function GET(request: NextRequest) {
 
     if (url.startsWith('data:')) {
       try {
-        const base64Data = url.split(',')[1]
+        // Extract base64 data more carefully - find the first comma that divides MIME type from data
+        const dataStartIndex = url.indexOf(',')
+        if (dataStartIndex === -1) {
+          throw new Error('Invalid data URL format - no comma found')
+        }
+        const base64Data = url.substring(dataStartIndex + 1)
         if (!base64Data) {
-          throw new Error('Invalid data URL format')
+          throw new Error('Invalid data URL format - no data after comma')
         }
         buffer = Buffer.from(base64Data, 'base64')
       } catch (error) {

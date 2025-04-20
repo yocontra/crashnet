@@ -6,6 +6,7 @@ import {
   handleSVGs,
   handleImages,
   processLinksForProxy,
+  removeHiddenElements,
   removeIframes,
   removeMetaTags,
   removeModernAttributesFromAll,
@@ -18,6 +19,7 @@ import {
 export async function simplify(dom: JSDOM, url: string): Promise<JSDOM> {
   const clonedDom = new JSDOM(dom.serialize())
 
+  removeHiddenElements(clonedDom)
   removeScripts(clonedDom)
   removeStyles(clonedDom)
   removeMetaTags(clonedDom)

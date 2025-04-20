@@ -1,7 +1,8 @@
 import { JSDOM } from 'jsdom'
 import { getAbsoluteUrl, getAppUrl } from './fetch'
 import { getCrashnetHeader } from './header'
-import { TARGET_WIDTH, VIEWPORT_WIDTH, VIEWPORT_HEIGHT } from './config'
+import { TARGET_WIDTH, VIEWPORT_WIDTH } from './config'
+import parseSrcset from 'srcset-parse'
 
 // List of attributes that were introduced after 1995 and should be removed
 export const MODERN_ATTRIBUTES = [
@@ -269,49 +270,60 @@ function constrainImageSize(img: Element): void {
 // Function to select an appropriate source from srcset
 export function selectSourceFromSrcset(srcset: string): string {
   try {
-    // Split the srcset into individual sources
-    const sources = srcset.split(',').map((src) => src.trim())
+    // Use the srcset-parse library to correctly handle the srcset attribute
+    const sources = parseSrcset(srcset)
 
-    // Target width for vintage computers (aim for medium-sized images)
+    if (!sources || sources.length === 0) {
+      return ''
+    }
+
+    // Target width for vintage computers
     const targetWidth = VIEWPORT_WIDTH
 
-    // Parse each source and extract URL and descriptor
-    const parsedSources = sources.map((source) => {
-      const [url, descriptor] = source.split(/\s+/)
+    // Process sources to calculate effective width for comparison
+    const processedSources = sources.map((source) => {
       let width = 0
 
-      // Parse width descriptor (e.g., "800w")
-      if (descriptor && descriptor.endsWith('w')) {
-        width = Number.parseInt(descriptor.slice(0, -1), 10)
+      // Handle sources with width descriptor
+      if (source.width) {
+        width = source.width
       }
-      // Parse density descriptor (e.g., "2x")
-      else if (descriptor && descriptor.endsWith('x')) {
-        const density = Number.parseFloat(descriptor.slice(0, -1))
-        width = targetWidth * density
+      // Handle sources with density descriptor (e.g. 2x)
+      else if (source.density) {
+        width = targetWidth * source.density
       }
-      // No descriptor, assume default width
+      // Default to target width if no descriptor
       else {
         width = targetWidth
       }
 
-      return { url, width }
+      return {
+        url: source.url,
+        width,
+      }
     })
 
     // Sort by how close the width is to our target
-    parsedSources.sort((a, b) => {
+    processedSources.sort((a, b) => {
       return Math.abs(a.width - targetWidth) - Math.abs(b.width - targetWidth)
     })
 
-    // Return the URL of the best match, or the first source if no match
-    return parsedSources.length > 0 ? parsedSources[0].url : ''
+    // Return the URL of the best match
+    return processedSources[0].url
   } catch (error) {
     console.error('Error parsing srcset:', error)
-    // If there's an error, try to extract the first URL
-    const firstSource = srcset.split(',')[0]
-    if (firstSource) {
-      const url = firstSource.split(/\s+/)[0]
-      return url || ''
+
+    // Simply try to get the first part of the string that looks like a URL
+    try {
+      // Look for the first string that looks like a URL
+      const urlMatch = srcset.match(/https?:\/\/[^\s,]+|data:[^\s,]+/i)
+      if (urlMatch) {
+        return urlMatch[0]
+      }
+    } catch (nestedError) {
+      console.error('Fallback srcset parsing also failed:', nestedError)
     }
+
     return ''
   }
 }
@@ -524,7 +536,7 @@ export function removeIframes(dom: JSDOM): void {
 }
 
 // Process SVGs and convert them to images using the image proxy
-export function handleSVGs(dom: JSDOM, baseUrl: string): void {
+export function handleSVGs(dom: JSDOM): void {
   const document = dom.window.document
   const svgs = document.querySelectorAll('svg')
   svgs.forEach((svg) => {
@@ -657,5 +669,18 @@ export function removeModernAttributesFromAll(dom: JSDOM): void {
   const allElements = document.querySelectorAll('*')
   allElements.forEach((el) => {
     removeModernAttributesFromElement(el)
+  })
+}
+
+// Remove elements with display:none based on computed style
+export function removeHiddenElements(dom: JSDOM): void {
+  const document = dom.window.document
+  const elements = document.querySelectorAll('*')
+
+  elements.forEach((element) => {
+    const computedStyle = dom.window.getComputedStyle(element)
+    if (computedStyle && computedStyle.display === 'none') {
+      element.remove()
+    }
   })
 }
