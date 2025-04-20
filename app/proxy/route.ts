@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { fetchURL, normalizeUrl, parseHTML } from '@/lib/fetch'
+import { fetchURL, normalizeUrl, loadPage } from '@/lib/fetch'
 import { simplify } from '@/lib/simplify'
 import { readify } from '@/lib/readify'
 import { minify } from 'html-minifier-terser'
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     const htmlContent = await fetchURL(normalizedUrl, {}, !isReadMode)
 
     // Parse the HTML into a DOM
-    const dom = await parseHTML(htmlContent, normalizedUrl)
+    const dom = await loadPage(htmlContent, normalizedUrl)
 
     // Process content based on mode
     let processedDom
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
     let bodyContent = html
     try {
       // Parse the HTML using a proper parser
-      const tempDom = await parseHTML(html)
+      const tempDom = await loadPage(html)
       const bodyElement = tempDom.window.document.body
 
       // Use the body's innerHTML if it exists

@@ -17,6 +17,7 @@ export const MODERN_ATTRIBUTES = [
   'itemscope',
   'itemtype',
   'itemprop',
+  'accesskey',
 
   // Resource loading attributes
   'integrity',
@@ -184,6 +185,63 @@ export const MODERN_ATTRIBUTES = [
   'sandbox',
 ]
 
+// List of HTML tags that were introduced after 1995 and should be removed
+export const MODERN_TAGS = [
+  // HTML5 semantic tags
+  /*
+  'article',
+  'aside',
+  'details',
+  'figcaption',
+  'figure',
+  'footer',
+  'header',
+  'main',
+  'mark',
+  'nav',
+  'section',
+  'summary',
+  'time',
+  */
+
+  // Media tags
+  'audio',
+  'canvas',
+  'source',
+  'track',
+  'video',
+
+  // Form tags introduced after HTML 3.2
+  'datalist',
+  'output',
+  'progress',
+  'meter',
+
+  // Embedded content
+  'embed',
+  'iframe',
+  'object',
+  'param',
+
+  // Other HTML5 elements
+  'dialog',
+  'menu',
+  'menuitem',
+  'template',
+  'picture',
+  'portal',
+  'slot',
+  'svg',
+
+  // Style and script
+  'style',
+  'noscript',
+
+  // Meta information
+  'meta',
+  'link',
+]
+
 // Process images in the document - handles proxying and size constraints
 export function handleImages(dom: JSDOM, baseUrl: string, isReadMode: boolean = false): void {
   const document = dom.window.document
@@ -219,8 +277,22 @@ export function handleImages(dom: JSDOM, baseUrl: string, isReadMode: boolean = 
       // Keep only essential attributes
       const src = img.getAttribute('src')
       const alt = img.getAttribute('alt')
-      const width = img.getAttribute('width')
-      const height = img.getAttribute('height')
+
+      // Get dimensions from computed style if not in attributes
+      let width = img.getAttribute('width')
+      let height = img.getAttribute('height')
+
+      // If no width/height attributes, try to get from computed style
+      if (!width || !height) {
+        const computedStyle = dom.window.getComputedStyle(img)
+        if (!width && computedStyle.width) {
+          width = computedStyle.width.replace('px', '')
+        }
+        if (!height && computedStyle.height) {
+          height = computedStyle.height.replace('px', '')
+        }
+      }
+
       const border = img.getAttribute('border')
 
       // Clear all attributes
@@ -242,9 +314,22 @@ export function handleImages(dom: JSDOM, baseUrl: string, isReadMode: boolean = 
 function constrainImageSize(img: Element): void {
   const MAX_WIDTH = TARGET_WIDTH
 
-  // Get current width/height attributes
+  // Get current width/height attributes or computed style
   let width = img.getAttribute('width')
   let height = img.getAttribute('height')
+
+  // If no width/height attributes, try to get from computed style
+  if (!width || !height) {
+    const computedStyle = img.ownerDocument.defaultView?.getComputedStyle(img)
+    if (computedStyle) {
+      if (!width && computedStyle.width) {
+        width = computedStyle.width.replace('px', '')
+      }
+      if (!height && computedStyle.height) {
+        height = computedStyle.height.replace('px', '')
+      }
+    }
+  }
 
   // If width is specified and exceeds our limit
   if (width && parseInt(width, 10) > MAX_WIDTH) {
@@ -498,25 +583,18 @@ function processPictureElements(dom: JSDOM): void {
   })
 }
 
-// Remove scripts from the document
-export function removeScripts(dom: JSDOM): void {
+// Remove all modern tags from the document (consolidated function)
+export function removeModernTags(dom: JSDOM): void {
   const document = dom.window.document
-  const scripts = document.querySelectorAll('script, noscript')
-  scripts.forEach((script) => script.remove())
-}
 
-// Remove styles from the document
-export function removeStyles(dom: JSDOM): void {
-  const document = dom.window.document
-  const styles = document.querySelectorAll('style, link')
-  styles.forEach((style) => style.remove())
-}
+  // Create a selector from the MODERN_TAGS array
+  const selector = MODERN_TAGS.join(', ')
 
-// Remove meta tags from the document
-export function removeMetaTags(dom: JSDOM): void {
-  const document = dom.window.document
-  const metaTags = document.querySelectorAll('meta')
-  metaTags.forEach((meta) => meta.remove())
+  // Find all modern elements
+  const modernElements = document.querySelectorAll(selector)
+
+  // Remove each element
+  modernElements.forEach((element) => element.remove())
 }
 
 // Set basic styling attributes on the body
@@ -528,11 +606,11 @@ export function setBodyAttributes(dom: JSDOM): void {
   document.body.setAttribute('vlink', 'purple')
 }
 
-// Remove iframes from the document
-export function removeIframes(dom: JSDOM): void {
+// Remove elements with role="dialog"
+export function removeUselessRoles(dom: JSDOM): void {
   const document = dom.window.document
-  const iframes = document.querySelectorAll('iframe')
-  iframes.forEach((iframe) => iframe.remove())
+  const dialogElements = document.querySelectorAll('[role="dialog"]')
+  dialogElements.forEach((element) => element.remove())
 }
 
 // Process SVGs and convert them to images using the image proxy
@@ -540,9 +618,14 @@ export function handleSVGs(dom: JSDOM): void {
   const document = dom.window.document
   const svgs = document.querySelectorAll('svg')
   svgs.forEach((svg) => {
-    // Get dimensions
-    const width = svg.getAttribute('width') || '100'
-    const height = svg.getAttribute('height') || '100'
+    // Get dimensions from computed style
+    const computedStyle = dom.window.getComputedStyle(svg)
+    let width = computedStyle.width || svg.getAttribute('width') || '100'
+    let height = computedStyle.height || svg.getAttribute('height') || '100'
+
+    // Remove 'px' if present
+    width = width.replace('px', '')
+    height = height.replace('px', '')
 
     // Create serialized SVG string for the placeholder image
     const serializer = new dom.window.XMLSerializer()
@@ -579,9 +662,14 @@ export function handleVideoTags(dom: JSDOM): void {
   const videos = document.querySelectorAll('video')
 
   videos.forEach((video) => {
-    // Get dimensions from the video element
-    const width = video.getAttribute('width') || '320'
-    const height = video.getAttribute('height') || '240'
+    // Get dimensions from computed style or attributes
+    const computedStyle = dom.window.getComputedStyle(video)
+    let width = computedStyle.width || video.getAttribute('width') || '320'
+    let height = computedStyle.height || video.getAttribute('height') || '240'
+
+    // Remove 'px' if present
+    width = width.replace('px', '')
+    height = height.replace('px', '')
 
     // Create a black div as placeholder
     const placeholder = document.createElement('div')
@@ -697,14 +785,13 @@ export function preserveComputed(dom: JSDOM): void {
     // Preserve text color - convert to hex or named color for older browsers
     if (computedStyle.color) {
       const color = rgbToHexOrName(computedStyle.color)
-      element.setAttribute('color', color)
+      element.setAttribute('text', color)
     }
 
     // Preserve display property for later tag conversion
     if (computedStyle.display) {
       const display = computedStyle.display
-      // We're interested in converting inline, inline-block, and block
-      if (display === 'inline' || display === 'inline-block' || display === 'block') {
+      if (display) {
         element.setAttribute('data-display', display)
       }
     }
@@ -857,10 +944,9 @@ function processComputedStyleTags(dom: JSDOM): void {
     }
   }
 
-  // Process display:inline and display:inline-block elements
-  // Specifically convert divs with display:inline to spans
+  // Convert divs with inline-ish displays to spans
   const inlineElements = document.querySelectorAll(
-    '[data-display="inline"], [data-display="inline-block"]'
+    '[data-display="inline"], [data-display="inline-block"], [data-display="flex"], [data-display="inline-flex"]'
   )
   inlineElements.forEach((element) => {
     const tagName = element.tagName.toLowerCase()

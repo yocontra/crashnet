@@ -1,3 +1,4 @@
+import { DOMWindow } from 'jsdom'
 import { JSDOM } from 'jsdom'
 
 // Define base URL for the application
@@ -99,7 +100,7 @@ export async function fetchURL(
 }
 
 // Function to wait for window load event
-function waitForWindowLoad(window: Window): Promise<void> {
+function waitForWindowLoad(window: DOMWindow): Promise<void> {
   return new Promise((resolve) => {
     if (window.document.readyState === 'complete') {
       // If already loaded, resolve after a small timeout
@@ -114,15 +115,18 @@ function waitForWindowLoad(window: Window): Promise<void> {
   })
 }
 
-export async function parseHTML(html: string, baseUrl?: string): Promise<JSDOM> {
+export async function loadPage(html: string, baseUrl?: string): Promise<JSDOM> {
   const dom = new JSDOM(html, {
     url: baseUrl,
     pretendToBeVisual: true,
     resources: 'usable',
     runScripts: 'dangerously',
+    referrer: baseUrl,
+    contentType: 'text/html',
+    includeNodeLocations: true,
+    storageQuota: 10000000,
   })
 
-  // Wait for the window to load
   await waitForWindowLoad(dom.window)
 
   return dom

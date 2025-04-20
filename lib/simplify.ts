@@ -8,32 +8,40 @@ import {
   processLinksForProxy,
   preserveComputed,
   removeHiddenElements,
-  removeIframes,
-  removeMetaTags,
   removeModernAttributesFromAll,
-  removeScripts,
-  removeStyles,
   setBodyAttributes,
   replaceModernTags,
+  removeUselessRoles,
+  removeModernTags,
 } from './dom'
 
 export async function simplify(dom: JSDOM, url: string): Promise<JSDOM> {
-  removeHiddenElements(dom)
-  removeScripts(dom)
-  preserveComputed(dom)
-  removeStyles(dom)
-  removeMetaTags(dom)
+  // Save the original title before manipulation
+  const originalTitle = dom.window.document.title
 
-  setBodyAttributes(dom)
-  replaceModernTags(dom)
-  handleImages(dom, url, false)
-  processLinksForProxy(dom, url)
-  removeIframes(dom)
-  handleVideoTags(dom)
-  handleAudioTags(dom, url)
-  handleSVGs(dom)
-  removeModernAttributesFromAll(dom)
+  const clonedDom = new JSDOM(dom.serialize())
 
-  addCrashnetHeader(dom, url)
-  return dom
+  // Also preserve the title in the cloned DOM
+  if (originalTitle) {
+    clonedDom.window.document.title = originalTitle
+  }
+
+  removeHiddenElements(clonedDom)
+  preserveComputed(clonedDom)
+
+  setBodyAttributes(clonedDom)
+  replaceModernTags(clonedDom)
+  handleImages(clonedDom, url, false)
+  handleSVGs(clonedDom)
+  processLinksForProxy(clonedDom, url)
+  handleVideoTags(clonedDom)
+  handleAudioTags(clonedDom, url)
+
+  // finally remove junk
+  removeModernTags(clonedDom)
+  removeUselessRoles(clonedDom)
+  removeModernAttributesFromAll(clonedDom)
+
+  addCrashnetHeader(clonedDom, url)
+  return clonedDom
 }

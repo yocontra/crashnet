@@ -11,16 +11,27 @@ export interface ReadableResult {
 }
 
 export async function readify(dom: JSDOM, url: string): Promise<JSDOM> {
+  // Save the original title before manipulation
+  const originalTitle = dom.window.document.title
+
+  // Clone the DOM to avoid modifying the original
+  const clonedDom = new JSDOM(dom.serialize())
+
+  // Also preserve the title in the cloned DOM
+  if (originalTitle) {
+    clonedDom.window.document.title = originalTitle
+  }
+
   // Use Mozilla's Readability to extract the article content
-  const reader = new Readability(dom.window.document)
+  const reader = new Readability(clonedDom.window.document)
   const article = reader.parse()
 
   if (!article) {
     throw new Error('Could not parse article content')
   }
 
-  // Get the article content
-  const { title, content } = article
+  // Get the article content - prefer article title from Readability, but fall back to original title if needed
+  const { title = originalTitle, content } = article
 
   // Add our header and make the dom
   const articleDom = new JSDOM(
@@ -41,9 +52,9 @@ export async function readify(dom: JSDOM, url: string): Promise<JSDOM> {
   )
 
   // Process URLs for images and links
-  handleImages(articleDom, url, true) // Use handleImages with isReadMode=true
-  processLinksForProxy(articleDom, url, true) // Pass true for isReadMode
-  handleSVGs(dom)
+  handleImages(articleDom, url, true)
+  handleSVGs(clonedDom)
+  processLinksForProxy(articleDom, url, true)
 
   return articleDom
 }
