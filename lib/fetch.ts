@@ -98,8 +98,32 @@ export async function fetchURL(
   return response.text()
 }
 
-export function parseHTML(html: string, baseUrl?: string): JSDOM {
-  // If baseUrl is provided, use it to ensure proper URL resolution
-  const options = baseUrl ? { url: baseUrl } : {}
-  return new JSDOM(html, options)
+// Function to wait for window load event
+function waitForWindowLoad(window: Window): Promise<void> {
+  return new Promise((resolve) => {
+    if (window.document.readyState === 'complete') {
+      // If already loaded, resolve after a small timeout
+      setTimeout(resolve, 100)
+      return
+    }
+
+    window.addEventListener('load', () => {
+      // Give it a bit more time just in case
+      setTimeout(resolve, 100)
+    })
+  })
+}
+
+export async function parseHTML(html: string, baseUrl?: string): Promise<JSDOM> {
+  const dom = new JSDOM(html, {
+    url: baseUrl,
+    pretendToBeVisual: true,
+    resources: 'usable',
+    runScripts: 'dangerously',
+  })
+
+  // Wait for the window to load
+  await waitForWindowLoad(dom.window)
+
+  return dom
 }

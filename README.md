@@ -6,9 +6,13 @@ A minimalist web proxy service designed for vintage computers like 68k Macintosh
 
 - **Ultra-Minimal Design**: Works with pre-CSS browsers
 - **HTTP-Only**: No SSL, CSS, or JavaScript
-- **Image Compression**: Automatically compresses images to JPEG format
+- **Supports All Images**: Automatically compresses images to JPEG format
 - **Link Rewriting**: All links are rewritten to work through the proxy
 - **Modern Web Compatibility**: Access modern websites on vintage hardware
+- **Supports JS**: Loads and executes JS before packaging the page up for older browsers (Works with React and other SPA-style applications)
+- **DOM Reconstruction**: Creates a virtual DOM and uses getComputedStyle to transform CSS based styling to older attributes and semantic elements
+- **Dual-mode**: Features a reading mode (optimized for text like blog posts, articles) and web mode (optimized for everything else)
+- **Form Support**: Supports interacting with services with forms + POST requests
 - **Tiny File Sizes**: Optimized for slow connections and limited memory
 
 ## TODO
@@ -17,12 +21,14 @@ A minimalist web proxy service designed for vintage computers like 68k Macintosh
 - video rendering by pulling the first frame, clicking it would go to download
 - Incorporate an adblocker to hide even more crap
 - Some images are going 520x520 for no reason
+- Lots of empty buttons on some sites
 - We can use dom.window.getComputedStyle! Things we can move from CSS/styles to DOM properties:
   - Font color
   - Background color
   - Height/width
   - Border (sometimes)
   - Font
+- Support some kind of cookie jar w/ JSDOM
 
 ## Getting Started
 

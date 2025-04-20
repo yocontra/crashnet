@@ -679,8 +679,249 @@ export function removeHiddenElements(dom: JSDOM): void {
 
   elements.forEach((element) => {
     const computedStyle = dom.window.getComputedStyle(element)
-    if (computedStyle && computedStyle.display === 'none') {
+    if (computedStyle?.display === 'none' || computedStyle?.visibility === 'hidden') {
       element.remove()
     }
   })
+}
+
+// Preserve computed styles as DOM attributes before stripping CSS
+export function preserveComputed(dom: JSDOM): void {
+  const document = dom.window.document
+  const elements = document.querySelectorAll('*')
+
+  elements.forEach((element) => {
+    const computedStyle = dom.window.getComputedStyle(element)
+    const tagName = element.tagName.toLowerCase()
+
+    // Preserve text color - convert to hex or named color for older browsers
+    if (computedStyle.color) {
+      const color = rgbToHexOrName(computedStyle.color)
+      element.setAttribute('color', color)
+    }
+
+    // Preserve display property for later tag conversion
+    if (computedStyle.display) {
+      const display = computedStyle.display
+      // We're interested in converting inline, inline-block, and block
+      if (display === 'inline' || display === 'inline-block' || display === 'block') {
+        element.setAttribute('data-display', display)
+      }
+    }
+
+    // Preserve background color
+    if (computedStyle.backgroundColor && computedStyle.backgroundColor !== 'rgba(0, 0, 0, 0)') {
+      const bgcolor = rgbToHexOrName(computedStyle.backgroundColor)
+      element.setAttribute('bgcolor', bgcolor)
+    }
+
+    // Preserve border styling - more comprehensive approach
+    // Check if any border is set
+    const hasBorder = [
+      computedStyle.borderTopWidth,
+      computedStyle.borderRightWidth,
+      computedStyle.borderBottomWidth,
+      computedStyle.borderLeftWidth,
+    ].some((width) => width && width !== '0px')
+
+    if (hasBorder) {
+      // Get border width (use the largest if they differ)
+      const borderWidths = [
+        parseInt(computedStyle.borderTopWidth, 10) || 0,
+        parseInt(computedStyle.borderRightWidth, 10) || 0,
+        parseInt(computedStyle.borderBottomWidth, 10) || 0,
+        parseInt(computedStyle.borderLeftWidth, 10) || 0,
+      ]
+      const maxBorderWidth = Math.max(...borderWidths)
+
+      // Set border attribute (works on tables, images, etc.)
+      element.setAttribute('border', maxBorderWidth.toString())
+
+      // For tables, handle additional border attributes
+      if (tagName === 'table') {
+        // Border color
+        if (computedStyle.borderColor) {
+          const borderColor = rgbToHexOrName(computedStyle.borderColor)
+          element.setAttribute('bordercolor', borderColor)
+        }
+
+        // Handle cellspacing/cellpadding based on border-collapse and padding
+        if (computedStyle.borderCollapse === 'separate') {
+          const cellspacing = parseInt(computedStyle.borderSpacing, 10) || 2
+          element.setAttribute('cellspacing', cellspacing.toString())
+        } else {
+          element.setAttribute('cellspacing', '0')
+        }
+
+        // Try to approximate cellpadding from TD padding if available
+        const tdPadding = parseInt(computedStyle.padding, 10) || 1
+        element.setAttribute('cellpadding', tdPadding.toString())
+      }
+    }
+
+    // Preserve font styling - handle weight, style, and decoration
+    // Font family
+    if (computedStyle.fontFamily) {
+      const fontFamily = computedStyle.fontFamily.split(',')[0].trim().replace(/["']/g, '')
+      element.setAttribute('face', fontFamily)
+    }
+
+    // Font size as legacy size attribute (1-7)
+    if (computedStyle.fontSize) {
+      const size = convertFontSizeToLegacy(computedStyle.fontSize)
+      if (size) {
+        element.setAttribute('size', size)
+      }
+    }
+
+    // Handle font weight using b tag
+    if (computedStyle.fontWeight && parseInt(computedStyle.fontWeight, 10) >= 600) {
+      if (tagName !== 'b' && tagName !== 'strong') {
+        // Can't modify the DOM tree here, so we'll use a marker attribute
+        element.setAttribute('fontweight', 'bold')
+      }
+    }
+
+    // Handle font style using i tag
+    if (computedStyle.fontStyle === 'italic' || computedStyle.fontStyle === 'oblique') {
+      if (tagName !== 'i' && tagName !== 'em') {
+        element.setAttribute('fontstyle', 'italic')
+      }
+    }
+
+    // Handle text decoration
+    if (computedStyle.textDecoration.includes('underline')) {
+      if (tagName !== 'u') {
+        element.setAttribute('textstyle', 'underline')
+      }
+    }
+  })
+
+  // Process for wrapping elements with styling markers in appropriate HTML tags
+  processComputedStyleTags(dom)
+}
+
+// Process elements with special style markers and wrap them in appropriate vintage HTML tags
+function processComputedStyleTags(dom: JSDOM): void {
+  const document = dom.window.document
+
+  // Helper function to convert element tag
+  function convertElementTag(element: Element, newTagName: string): void {
+    try {
+      // Create new element with desired tag name
+      const newElement = document.createElement(newTagName)
+
+      // Copy all attributes
+      Array.from(element.attributes).forEach((attr) => {
+        newElement.setAttribute(attr.name, attr.value)
+      })
+
+      // Move all children to the new element
+      while (element.firstChild) {
+        newElement.appendChild(element.firstChild)
+      }
+
+      // Replace original element with new one in the DOM
+      if (element.parentNode) {
+        element.parentNode.replaceChild(newElement, element)
+      }
+    } catch (error) {
+      console.error(`Error converting ${element.tagName} to ${newTagName}:`, error)
+    }
+  }
+
+  // Helper function to wrap element contents in a styled tag
+  function wrapElementContents(element: Element, wrapperTag: string): void {
+    // Skip if element has no text content or already has the tag as a child
+    if (
+      !element.textContent?.trim() ||
+      element.children.length === 0 ||
+      element.querySelector(wrapperTag)
+    ) {
+      return
+    }
+
+    try {
+      // Create new wrapper element
+      const wrapper = document.createElement(wrapperTag)
+
+      // Move all children to the wrapper
+      while (element.firstChild) {
+        wrapper.appendChild(element.firstChild)
+      }
+
+      // Append wrapper to original element
+      element.appendChild(wrapper)
+    } catch (error) {
+      console.error(`Error wrapping element with ${wrapperTag}:`, error)
+    }
+  }
+
+  // Process display:inline and display:inline-block elements
+  // Specifically convert divs with display:inline to spans
+  const inlineElements = document.querySelectorAll(
+    '[data-display="inline"], [data-display="inline-block"]'
+  )
+  inlineElements.forEach((element) => {
+    const tagName = element.tagName.toLowerCase()
+    if (tagName === 'div') {
+      convertElementTag(element, 'span')
+    }
+    element.removeAttribute('data-display')
+  })
+
+  // Process bold text elements
+  const boldElements = document.querySelectorAll('[fontweight="bold"]')
+  boldElements.forEach((element) => {
+    wrapElementContents(element, 'b')
+    element.removeAttribute('fontweight')
+  })
+
+  // Process italic text elements
+  const italicElements = document.querySelectorAll('[fontstyle="italic"]')
+  italicElements.forEach((element) => {
+    wrapElementContents(element, 'i')
+    element.removeAttribute('fontstyle')
+  })
+
+  // Process underlined text elements
+  const underlineElements = document.querySelectorAll('[textstyle="underline"]')
+  underlineElements.forEach((element) => {
+    wrapElementContents(element, 'u')
+    element.removeAttribute('textstyle')
+  })
+}
+
+// Helper function to convert CSS font size to legacy HTML size attribute (1-7)
+function convertFontSizeToLegacy(fontSize: string): string {
+  const sizeInPx = parseFloat(fontSize)
+  if (isNaN(sizeInPx)) return ''
+
+  // Approximate mapping of pixel sizes to HTML size attribute values
+  if (sizeInPx <= 9) return '1'
+  if (sizeInPx <= 11) return '2'
+  if (sizeInPx <= 13) return '3'
+  if (sizeInPx <= 16) return '4' // Default
+  if (sizeInPx <= 19) return '5'
+  if (sizeInPx <= 24) return '6'
+  return '7' // Largest
+}
+
+// Convert RGB color to hex or named color for better compatibility
+function rgbToHexOrName(rgb: string): string {
+  // Handle named colors directly
+  if (rgb.match(/^[a-z]+$/i)) {
+    return rgb
+  }
+
+  // Extract RGB values
+  const rgbMatch = rgb.match(/rgba?\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*[\d.]+\s*)?\)/)
+  if (!rgbMatch) return rgb
+
+  const r = parseInt(rgbMatch[1], 10)
+  const g = parseInt(rgbMatch[2], 10)
+  const b = parseInt(rgbMatch[3], 10)
+
+  // Convert to hex
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
 }

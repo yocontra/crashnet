@@ -6,6 +6,7 @@ import {
   handleSVGs,
   handleImages,
   processLinksForProxy,
+  preserveComputed,
   removeHiddenElements,
   removeIframes,
   removeMetaTags,
@@ -17,23 +18,22 @@ import {
 } from './dom'
 
 export async function simplify(dom: JSDOM, url: string): Promise<JSDOM> {
-  const clonedDom = new JSDOM(dom.serialize())
+  removeHiddenElements(dom)
+  removeScripts(dom)
+  preserveComputed(dom)
+  removeStyles(dom)
+  removeMetaTags(dom)
 
-  removeHiddenElements(clonedDom)
-  removeScripts(clonedDom)
-  removeStyles(clonedDom)
-  removeMetaTags(clonedDom)
+  setBodyAttributes(dom)
+  replaceModernTags(dom)
+  handleImages(dom, url, false)
+  processLinksForProxy(dom, url)
+  removeIframes(dom)
+  handleVideoTags(dom)
+  handleAudioTags(dom, url)
+  handleSVGs(dom)
+  removeModernAttributesFromAll(dom)
 
-  setBodyAttributes(clonedDom)
-  replaceModernTags(clonedDom)
-  handleImages(clonedDom, url, false)
-  processLinksForProxy(clonedDom, url)
-  removeIframes(clonedDom)
-  handleVideoTags(clonedDom)
-  handleAudioTags(clonedDom, url)
-  handleSVGs(clonedDom, url)
-  removeModernAttributesFromAll(clonedDom)
-
-  addCrashnetHeader(clonedDom, url)
-  return clonedDom
+  addCrashnetHeader(dom, url)
+  return dom
 }

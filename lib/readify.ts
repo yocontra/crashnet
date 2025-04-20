@@ -1,7 +1,7 @@
 import { JSDOM } from 'jsdom'
 import { Readability } from '@mozilla/readability'
 import { getCrashnetHeader } from './header'
-import { handleImages, processLinksForProxy } from './dom'
+import { handleImages, processLinksForProxy, handleSVGs } from './dom'
 
 export interface ReadableResult {
   title: string
@@ -11,11 +11,8 @@ export interface ReadableResult {
 }
 
 export async function readify(dom: JSDOM, url: string): Promise<JSDOM> {
-  // Clone the DOM to avoid modifying the original
-  const clonedDom = new JSDOM(dom.serialize())
-
   // Use Mozilla's Readability to extract the article content
-  const reader = new Readability(clonedDom.window.document)
+  const reader = new Readability(dom.window.document)
   const article = reader.parse()
 
   if (!article) {
@@ -46,6 +43,7 @@ export async function readify(dom: JSDOM, url: string): Promise<JSDOM> {
   // Process URLs for images and links
   handleImages(articleDom, url, true) // Use handleImages with isReadMode=true
   processLinksForProxy(articleDom, url, true) // Pass true for isReadMode
+  handleSVGs(dom)
 
   return articleDom
 }
