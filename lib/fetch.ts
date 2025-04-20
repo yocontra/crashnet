@@ -103,10 +103,9 @@ export async function fetchURL(
 export interface PlaywrightPage {
   window: {
     document: Document
-    getComputedStyle: (element: Element) => CSSStyleDeclaration
-    XMLSerializer: new () => XMLSerializer
+    getComputedStyle: (element: Element) => Promise<CSSStyleDeclaration>
   }
-  serialize: () => string
+  serialize: () => Promise<string>
   page: Page
   browser: Browser
   title: string
@@ -156,14 +155,9 @@ export async function loadPage(html: string, baseUrl?: string): Promise<Playwrig
   const pwPage: PlaywrightPage = {
     window: {
       document: await page.evaluate(() => document),
-      getComputedStyle: (element: Element) => {
-        return page.evaluate(
-          (el) => getComputedStyle(el),
-          element
-        ) as unknown as CSSStyleDeclaration
+      getComputedStyle: async (element: Element): Promise<CSSStyleDeclaration> => {
+        return page.evaluate((el) => getComputedStyle(el), element)
       },
-      // We don't need to provide XMLSerializer as we're using it in browser context
-      XMLSerializer: {} as any,
     },
     serialize: () => {
       // Return a promise that resolves to the page content

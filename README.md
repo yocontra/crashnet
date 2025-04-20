@@ -4,19 +4,21 @@ A minimalist web proxy service designed for vintage computers like 68k Macintosh
 
 ## Features
 
-- **HTTP-Only**: No SSL, CSS, or JavaScript
+- **Ultra-Minimal Design**: Works with pre-CSS browsers. No SSL, CSS, or JavaScript.
 - **Uses a real browser**: Loads and executes the page in a real browser, so JS and CSS are executed and page layout completes before packaging it up and simplifying it for vintage browsers
-- **Ultra-Minimal Design**: Works with pre-CSS browsers
 - **Supports All Images**: Automatically compresses images to JPEG format, even supports SVGs
 - **Link Rewriting**: All links are rewritten to work through the proxy, even audio/video embeds get turned into downloads
 - **DOM Reconstruction**: Uses getComputedStyle to transform CSS based styling to older attributes and semantic elements
 - **Dual-mode**: Features a reading mode (optimized for text like blog posts, articles) and web mode (optimized for everything else)
 - **Form Support**: Supports interacting with services with forms + POST requests
-- **Tiny File Sizes**: Optimized for slow connections and limited memory
+- **Tiny File Sizes**: Optimized for slow connections and limited memory. Uses specially crafted DOM minification on the final output.
+- **Opinionated**: Optimizes for a functional experience - attempting to degrade newer HTML to something still usable
 
 ## TODO
 
+- POST /proxy for form support (test using google.com search)
 - Emoji -> svg/png via imagemoji or twemoji
+- Display flex is not working with our inline detection
 - video rendering by pulling the first frame, clicking it would go to download
 - Incorporate an adblocker to hide even more crap
 - Some images are going 520x520 for no reason

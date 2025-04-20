@@ -187,8 +187,8 @@ export const MODERN_ATTRIBUTES = [
   'sandbox',
 ]
 
-// List of HTML tags that were introduced after 1995 and should be removed
-export const MODERN_TAGS = [
+// Selectors for elements that should be removed
+export const REMOVE_SELECTORS = [
   // HTML5 semantic tags
   /*
   'article',
@@ -243,6 +243,15 @@ export const MODERN_TAGS = [
   // Meta information
   'meta',
   'link',
+
+  // Dialog elements and useless elements
+  '[role="dialog"]',
+
+  // Inputs not inside forms - they're useless without a form
+  'input:not(form input)',
+  'textarea:not(form textarea)',
+  'select:not(form select)',
+  'button:not(form button)',
 ]
 
 // Process images in the document - handles proxying and size constraints
@@ -443,7 +452,14 @@ export async function processLinksForProxy(
 
       for (const link of links) {
         const href = link.getAttribute('href')
-        if (href && !href.startsWith('#') && !href.startsWith('javascript:')) {
+
+        // Remove javascript: links entirely
+        if (href && href.startsWith('javascript:')) {
+          link.parentNode?.removeChild(link)
+          continue
+        }
+
+        if (href && !href.startsWith('#')) {
           try {
             // Get absolute URL
             let absoluteHref
@@ -534,40 +550,46 @@ export async function replaceModernTags(pw: PlaywrightPage): Promise<void> {
   await processPictureElements(pw)
 
   await pw.page.evaluate(() => {
-    function replaceTagsInElement(element: Element): void {
-      // Get all child nodes
-      const childNodes = element.childNodes
-
-      // Process each child node
-      for (let i = 0; i < childNodes.length; i++) {
-        const node = childNodes[i]
-
-        // If it's an element node
-        if (node.nodeType === 1) {
-          const el = node as Element
-
-          // Replace specific tags
-          if (el.tagName.toLowerCase() === 'strong') {
-            const b = document.createElement('b')
-            while (el.firstChild) {
-              b.appendChild(el.firstChild)
-            }
-            el.parentNode?.replaceChild(b, el)
-          } else if (el.tagName.toLowerCase() === 'em') {
-            const i = document.createElement('i')
-            while (el.firstChild) {
-              i.appendChild(el.firstChild)
-            }
-            el.parentNode?.replaceChild(i, el)
-          } else {
-            // Recursively process child elements
-            replaceTagsInElement(el)
-          }
-        }
+    // Convert <strong> tags to <b> tags
+    const strongTags = document.querySelectorAll('strong')
+    for (const strongTag of strongTags) {
+      const b = document.createElement('b')
+      while (strongTag.firstChild) {
+        b.appendChild(strongTag.firstChild)
       }
+      strongTag.parentNode?.replaceChild(b, strongTag)
     }
 
-    replaceTagsInElement(document.body)
+    // Convert <em> tags to <i> tags
+    const emTags = document.querySelectorAll('em')
+    for (const emTag of emTags) {
+      const i = document.createElement('i')
+      while (emTag.firstChild) {
+        i.appendChild(emTag.firstChild)
+      }
+      emTag.parentNode?.replaceChild(i, emTag)
+    }
+
+    // Convert form buttons to input type=submit
+    const formButtons = document.querySelectorAll('form button')
+    for (const button of formButtons) {
+      const buttonText = button.textContent || 'Submit'
+      const input = document.createElement('input')
+      input.setAttribute('type', 'submit')
+      input.setAttribute('value', buttonText.trim())
+
+      // Copy any name attribute
+      if (button.hasAttribute('name')) {
+        input.setAttribute('name', button.getAttribute('name') || '')
+      }
+
+      // Check if button is disabled
+      if (button.hasAttribute('disabled')) {
+        input.setAttribute('disabled', '')
+      }
+
+      button.parentNode?.replaceChild(input, button)
+    }
   })
 }
 
@@ -607,22 +629,23 @@ async function processPictureElements(pw: PlaywrightPage): Promise<void> {
   })
 }
 
-// Remove all modern tags from the document (consolidated function)
-export async function removeModernTags(pw: PlaywrightPage): Promise<void> {
-  const modernTags = MODERN_TAGS
+// Remove unwanted elements from the document
+export async function removeUnwantedElements(pw: PlaywrightPage): Promise<void> {
+  const selectors = REMOVE_SELECTORS
   await pw.page.evaluate(
     (params) => {
-      const { modernTags } = params
-      // Create a selector from the MODERN_TAGS array
-      const selector = modernTags.join(', ')
+      const { selectors } = params
 
-      // Find all modern elements
-      const modernElements = document.querySelectorAll(selector)
+      // Create a combined selector by joining all selectors with commas
+      const combinedSelector = selectors.join(', ')
+
+      // Find all elements matching any of the selectors
+      const elementsToRemove = document.querySelectorAll(combinedSelector)
 
       // Remove each element
-      modernElements.forEach((element) => element.remove())
+      elementsToRemove.forEach((element) => element.remove())
     },
-    { modernTags }
+    { selectors }
   )
 }
 
@@ -633,14 +656,6 @@ export async function setBodyAttributes(pw: PlaywrightPage): Promise<void> {
     document.body.setAttribute('text', 'black')
     document.body.setAttribute('link', 'blue')
     document.body.setAttribute('vlink', 'purple')
-  })
-}
-
-// Remove elements with role="dialog"
-export async function removeUselessRoles(pw: PlaywrightPage): Promise<void> {
-  await pw.page.evaluate(() => {
-    const dialogElements = document.querySelectorAll('[role="dialog"]')
-    dialogElements.forEach((element) => element.remove())
   })
 }
 
@@ -866,7 +881,7 @@ export async function preserveComputed(pw: PlaywrightPage): Promise<void> {
       // Preserve text color - convert to hex or named color for older browsers
       if (computedStyle.color) {
         const color = rgbToHexOrName(computedStyle.color)
-        element.setAttribute('text', color)
+        element.setAttribute('color', color) // TODO: need to use <font color=""> wrapper here
       }
 
       // Preserve display property for later tag conversion

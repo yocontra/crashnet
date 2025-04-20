@@ -11,8 +11,7 @@ import {
   removeModernAttributesFromAll,
   setBodyAttributes,
   replaceModernTags,
-  removeUselessRoles,
-  removeModernTags,
+  removeUnwantedElements,
 } from './dom'
 
 export async function simplify(pwPage: PlaywrightPage, url: string): Promise<PlaywrightPage> {
@@ -28,9 +27,8 @@ export async function simplify(pwPage: PlaywrightPage, url: string): Promise<Pla
   await handleVideoTags(pwPage)
   await handleAudioTags(pwPage, url)
 
-  // finally remove junk
-  await removeModernTags(pwPage)
-  await removeUselessRoles(pwPage)
+  // finally remove all unwanted elements
+  await removeUnwantedElements(pwPage)
   await removeModernAttributesFromAll(pwPage)
 
   await addCrashnetHeader(pwPage, url)
