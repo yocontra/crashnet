@@ -1,6 +1,6 @@
 import { Readability } from '@mozilla/readability'
 import { getCrashnetHeader } from './header'
-import { handleImages, processLinksForProxy, handleSVGs } from './dom'
+import { handleImages, processLinksForProxy, handleSVGs, processPictureElements } from './dom'
 import { PlaywrightPage } from './fetch'
 
 export interface ReadableResult {
@@ -10,7 +10,11 @@ export interface ReadableResult {
   excerpt?: string
 }
 
-export async function readify(pwPage: PlaywrightPage, url: string): Promise<PlaywrightPage> {
+export async function readify(
+  pwPage: PlaywrightPage,
+  url: string,
+  baseUrl?: string
+): Promise<PlaywrightPage> {
   // Extract article content using Readability directly in the browser context
   const article = await pwPage.page.evaluate(() => {
     // This runs in the browser context with Readability already loaded
@@ -55,10 +59,13 @@ export async function readify(pwPage: PlaywrightPage, url: string): Promise<Play
   // Update the page title in our object
   pwPage.title = title || pwPage.title || url
 
+  // Process picture elements first
+  await processPictureElements(pwPage)
+
   // Process URLs for images and links
-  await handleImages(pwPage, url, true)
-  await handleSVGs(pwPage)
-  await processLinksForProxy(pwPage, url, true)
+  await handleImages(pwPage, url, true, baseUrl)
+  await handleSVGs(pwPage, baseUrl)
+  await processLinksForProxy(pwPage, url, true, baseUrl)
 
   return pwPage
 }

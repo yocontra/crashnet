@@ -1,8 +1,8 @@
 import { chromium, Browser, Page } from 'playwright'
 import { VIEWPORT_WIDTH, VIEWPORT_HEIGHT } from './config'
 
-// Define base URL for the application
-export const APP_BASE_URL = process.env.NEXT_PUBLIC_APP_BASE_URL || 'http://localhost:3000'
+// Define base URL for the application - should be determined at runtime from request
+export const APP_BASE_URL = process.env.NEXT_PUBLIC_APP_BASE_URL || ''
 
 // Common headers for fetching content
 const VINTAGE_BROWSER_HEADERS = {
@@ -48,8 +48,12 @@ export function getAbsoluteUrl(url: string, baseUrl: string): string {
 }
 
 // Function to get absolute app URL (for proxy endpoints)
-export function getAppUrl(path: string): string {
-  return new URL(path, APP_BASE_URL).toString()
+export function getAppUrl(path: string, baseUrl?: string): string {
+  const base = baseUrl || APP_BASE_URL
+  if (!base) {
+    throw new Error('Base URL is required but not provided')
+  }
+  return new URL(path, base).toString()
 }
 
 // Function to normalize a URL

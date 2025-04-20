@@ -2,35 +2,23 @@ import { NextRequest, NextResponse } from 'next/server'
 import { fetchURL, normalizeUrl, loadPage } from '@/lib/fetch'
 import { simplify } from '@/lib/simplify'
 import { readify } from '@/lib/readify'
-import { minify } from 'html-minifier-terser'
+import { minify } from '@/lib/dom/minify'
 
 export const dynamic = 'force-dynamic'
-
-const HTML_MINIFY_OPTIONS = {
-  collapseWhitespace: true,
-  removeComments: true,
-  removeRedundantAttributes: true,
-  removeScriptTypeAttributes: true,
-  removeStyleLinkTypeAttributes: true,
-  useShortDoctype: true,
-  minifyCSS: false,
-  minifyJS: false,
-  removeEmptyAttributes: true,
-  removeOptionalTags: true,
-  removeAttributeQuotes: true,
-  removeEmptyElements: true,
-  keepClosingSlash: false,
-  caseSensitive: false,
-}
 
 export async function GET(request: NextRequest) {
   const url = request.nextUrl.searchParams.get('url')
   const read = request.nextUrl.searchParams.get('read')
   const isReadMode = read === 'true'
 
+  // Get base URL from request
+  const protocol = request.headers.get('x-forwarded-proto') || 'http'
+  const host = request.headers.get('host') || request.headers.get('x-forwarded-host')
+  const baseUrl = `${protocol}://${host}`
+
   if (!url) {
     return new NextResponse(
-      `<!DOCTYPE html>
+      await minify(`<!DOCTYPE html>
       <html>
         <head>
           <title>Crashnet - Error</title>
@@ -44,7 +32,7 @@ export async function GET(request: NextRequest) {
             </p>
           </center>
         </body>
-      </html>`,
+      </html>`),
       {
         headers: {
           'Content-Type': 'text/html; charset=utf-8',
@@ -66,14 +54,13 @@ export async function GET(request: NextRequest) {
     // Process content based on mode
     let processedDom
     if (isReadMode) {
-      processedDom = await readify(dom, normalizedUrl)
+      processedDom = await readify(dom, normalizedUrl, baseUrl)
     } else {
-      processedDom = await simplify(dom, normalizedUrl)
+      processedDom = await simplify(dom, normalizedUrl, baseUrl)
     }
 
     // Minify the HTML
-    const pageContent = await processedDom.serialize()
-    const html = await minify(pageContent, HTML_MINIFY_OPTIONS)
+    const html = await processedDom.serialize()
 
     // Extract body content using proper DOM parsing
     let bodyContent = html
@@ -91,11 +78,24 @@ export async function GET(request: NextRequest) {
       // Fallback to the whole HTML if parsing fails
     }
 
+    // Extract title directly from the processed page
+    let pageTitle = ''
+    try {
+      // Get title properly from the browser
+      pageTitle = await processedDom.page.title()
+      if (!pageTitle || pageTitle.trim() === '') {
+        pageTitle = processedDom.title || url
+      }
+    } catch (error) {
+      console.error('Error getting page title:', error)
+      pageTitle = url
+    }
+
     // Create a full HTML document
     const fullHtml = `<!DOCTYPE html>
     <html>
       <head>
-        <title>${processedDom.window.document.title || url}</title>
+        <title>${pageTitle}</title>
       </head>
       <body bgcolor="white" text="black" link="blue" vlink="purple">
         ${bodyContent}
@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
     </html>`
 
     // Return the processed page
-    return new NextResponse(fullHtml, {
+    return new NextResponse(await minify(fullHtml), {
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
       },
@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     console.error(error)
     return new NextResponse(
-      `<!DOCTYPE html>
+      await minify(`<!DOCTYPE html>
       <html>
         <head>
           <title>Crashnet - Error</title>
@@ -127,7 +127,7 @@ export async function GET(request: NextRequest) {
             </p>
           </center>
         </body>
-      </html>`,
+      </html>`),
       {
         headers: {
           'Content-Type': 'text/html; charset=utf-8',

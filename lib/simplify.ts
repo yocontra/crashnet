@@ -7,27 +7,39 @@ import {
   handleImages,
   processLinksForProxy,
   preserveComputed,
+  processPictureElements,
   removeHiddenElements,
   removeModernAttributesFromAll,
   setBodyAttributes,
   replaceModernTags,
   removeUnwantedElements,
 } from './dom'
+import { convertTablesToLayout } from './tables'
 
-export async function simplify(pwPage: PlaywrightPage, url: string): Promise<PlaywrightPage> {
-  // Apply all transformations directly to the original page
+export async function simplify(
+  pwPage: PlaywrightPage,
+  url: string,
+  baseUrl?: string
+): Promise<PlaywrightPage> {
   await removeHiddenElements(pwPage)
   await preserveComputed(pwPage)
 
+  // Process picture elements first
+  await processPictureElements(pwPage)
+
   await setBodyAttributes(pwPage)
   await replaceModernTags(pwPage)
-  await handleImages(pwPage, url, false)
-  await handleSVGs(pwPage)
-  await processLinksForProxy(pwPage, url)
+
+  // Convert tables to simpler layouts for vintage browsers
+  await convertTablesToLayout(pwPage)
+
+  await handleImages(pwPage, url, false, baseUrl)
+  await handleSVGs(pwPage, baseUrl)
+  await processLinksForProxy(pwPage, url, false, baseUrl)
   await handleVideoTags(pwPage)
   await handleAudioTags(pwPage, url)
 
-  // finally remove all unwanted elements
+  // Remove unwanted elements
   await removeUnwantedElements(pwPage)
   await removeModernAttributesFromAll(pwPage)
 

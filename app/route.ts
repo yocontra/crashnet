@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { TARGET_WIDTH } from '@/lib/config'
+import { minify } from '@/lib/dom/minify'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,7 +31,7 @@ export async function GET() {
     </body>
   </html>`
 
-  return new NextResponse(homepage, {
+  return new NextResponse(await minify(homepage), {
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
     },
