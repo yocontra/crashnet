@@ -232,7 +232,7 @@ export async function preserveComputed(pw: PlaywrightPage): Promise<void> {
     // Process elements with special style markers and wrap them in appropriate vintage HTML tags
     function processComputedStyleTags() {
       // Helper function to wrap element contents in a styled tag
-      function wrapElementContents(element, wrapperTag) {
+      function wrapElementContents(element: Element, wrapperTag: string) {
         // Skip if element has no text content or already has the tag as a child
         if (
           !element.textContent?.trim() ||

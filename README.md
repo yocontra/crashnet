@@ -15,9 +15,11 @@ A minimalist web proxy service designed for vintage computers like 68k Macintosh
 - **Form Support**: Supports interacting with services with forms + POST requests
 - **Tiny File Sizes**: Optimized for slow connections and limited memory. Uses specially crafted DOM minification on the final output.
 - **Opinionated**: Optimizes for a functional experience - attempting to degrade newer HTML to something still usable
+- **Built-in Adblock**: Removes junk from the page and speeds things up by using ghostery adblock w/ easylist
 
 ## TODO
 
+- Switching between reading and web mode messes up the URL sometimes on the second change
 - POST /proxy for form support (test using google.com search)
 - Emoji -> svg/png via imagemoji or twemoji
 - Display flex is not working with our inline detection

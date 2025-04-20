@@ -1,6 +1,6 @@
 {
-  "name": "my-v0-project",
-  "version": "0.1.0",
+  "name": "crashnet",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -10,10 +10,14 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@ghostery/adblocker-playwright": "^2.5.1",
     "@mozilla/readability": "^0.6.0",
+    "cross-fetch": "^4.1.0",
     "html-minifier-terser": "latest",
     "next": "15.2.4",
     "playwright": "^1.52.0",
+    "playwright-core": "^1.52.0",
+    "playwright-extra": "^4.3.6",
     "react": "^19",
     "react-dom": "^19",
     "sharp": "latest",
@@ -21,6 +25,7 @@
     "tough-cookie": "^5.1.2"
   },
   "devDependencies": {
+    "@types/html-minifier-terser": "^7.0.2",
     "@types/mozilla__readability": "^0.4.2",
     "@types/node": "^22",
     "@types/react": "^19",

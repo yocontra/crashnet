@@ -15,7 +15,7 @@ export async function GET() {
         <h1>CRASHNET</h1>
         <p>Web Proxy for Vintage Computers</p>
         <br />
-        <form action="./proxy" method="get">
+        <form action="/proxy" method="get">
           <input type="text" name="url" size="40" />
           <input type="submit" value="Go" />
         </form>

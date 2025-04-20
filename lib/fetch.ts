@@ -1,4 +1,4 @@
-import { chromium, Browser, Page } from 'playwright'
+import { Browser, Page, chromium } from 'playwright'
 import { VIEWPORT_WIDTH, VIEWPORT_HEIGHT } from './config'
 
 // Define base URL for the application - should be determined at runtime from request
@@ -36,7 +36,7 @@ export function isAbsoluteUrl(url: string): boolean {
 
     // Check if it has a protocol
     return url.includes('://')
-  } catch (error) {
+  } catch {
     // If URL constructor throws, it's relative
     return false
   }
@@ -65,11 +65,7 @@ export function normalizeUrl(url: string, useHttpCompatibility = true): string {
   }
 
   // Optionally replace https with http for compatibility with vintage browsers
-  if (useHttpCompatibility) {
-    normalizedUrl = normalizedUrl.replace('https://', 'http://')
-  }
-
-  return normalizedUrl
+  return useHttpCompatibility ? normalizedUrl.replace('https://', 'http://') : normalizedUrl
 }
 
 // Function to fetch a URL with options
@@ -115,13 +111,20 @@ export interface PlaywrightPage {
   title: string
 }
 
+// Note: Adblocker functionality has been temporarily removed
+// Will be re-implemented in a future update
+
 // Get a browser instance with a singleton pattern
 let browserInstance: Browser | null = null
+
 async function getBrowser(): Promise<Browser> {
   if (!browserInstance) {
+    // Launch browser with headless mode
     browserInstance = await chromium.launch({
       headless: true,
     })
+
+    // Adblocker initialization will be added back later
   }
   return browserInstance
 }
@@ -139,6 +142,8 @@ export async function loadPage(html: string, baseUrl?: string): Promise<Playwrig
   })
 
   const page = await context.newPage()
+
+  // Ad blocking functionality will be re-added in the future
 
   // If we have direct HTML content and a baseUrl, we'll navigate to the baseUrl
   // and then set the content to ensure resources load correctly
@@ -159,8 +164,8 @@ export async function loadPage(html: string, baseUrl?: string): Promise<Playwrig
   const pwPage: PlaywrightPage = {
     window: {
       document: await page.evaluate(() => document),
-      getComputedStyle: async (element: Element): Promise<CSSStyleDeclaration> => {
-        return page.evaluate((el) => getComputedStyle(el), element)
+      getComputedStyle: async (element: Element) => {
+        return page.evaluate((el) => getComputedStyle(el), element as any)
       },
     },
     serialize: () => {
