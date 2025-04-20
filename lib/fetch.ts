@@ -1,5 +1,8 @@
 import { JSDOM } from 'jsdom'
 
+// Define base URL for the application
+export const APP_BASE_URL = process.env.NEXT_PUBLIC_APP_BASE_URL || 'http://localhost:3000'
+
 // Common headers for fetching content
 const VINTAGE_BROWSER_HEADERS = {
   'User-Agent': 'Mozilla/4.0 (compatible; MSIE 5.0; Mac_PowerPC)',
@@ -32,6 +35,11 @@ export function isAbsoluteUrl(url: string): boolean {
 // Function to get an absolute URL from a potentially relative URL
 export function getAbsoluteUrl(url: string, baseUrl: string): string {
   return isAbsoluteUrl(url) ? url : new URL(url, baseUrl).toString()
+}
+
+// Function to get absolute app URL (for proxy endpoints)
+export function getAppUrl(path: string): string {
+  return new URL(path, APP_BASE_URL).toString()
 }
 
 // Function to normalize a URL

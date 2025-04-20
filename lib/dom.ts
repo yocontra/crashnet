@@ -1,6 +1,7 @@
 import { JSDOM } from 'jsdom'
-import { getAbsoluteUrl } from './fetch'
+import { getAbsoluteUrl, getAppUrl } from './fetch'
 import { getCrashnetHeader } from './header'
+import { TARGET_WIDTH, VIEWPORT_WIDTH, VIEWPORT_HEIGHT } from './config'
 
 // List of attributes that were introduced after 1995 and should be removed
 export const MODERN_ATTRIBUTES = [
@@ -182,14 +183,9 @@ export const MODERN_ATTRIBUTES = [
   'sandbox',
 ]
 
-// Process images in the document for proxy
-export function processImagesForProxy(dom: JSDOM, baseUrl: string): void {
+// Process images in the document - handles proxying and size constraints
+export function handleImages(dom: JSDOM, baseUrl: string, isReadMode: boolean = false): void {
   const document = dom.window.document
-
-  // First, handle <picture> elements
-  processPictureElements(dom, baseUrl)
-
-  // Then process regular images
   const images = document.querySelectorAll('img')
 
   images.forEach((img) => {
@@ -205,9 +201,9 @@ export function processImagesForProxy(dom: JSDOM, baseUrl: string): void {
 
     if (src) {
       try {
-        // Use the centralized function to get absolute URL
         const absoluteSrc = getAbsoluteUrl(src, baseUrl)
-        img.setAttribute('src', `/image_proxy?url=${encodeURIComponent(absoluteSrc)}`)
+        const proxyUrl = getAppUrl(`/image_proxy?url=${encodeURIComponent(absoluteSrc)}`)
+        img.setAttribute('src', proxyUrl)
 
         // Set max width and height constraints
         constrainImageSize(img)
@@ -215,84 +211,35 @@ export function processImagesForProxy(dom: JSDOM, baseUrl: string): void {
         console.error(`Error processing image src: ${src}`, error)
       }
     }
-  })
-}
 
-// Process <picture> elements to select appropriate source
-function processPictureElements(dom: JSDOM, baseUrl: string): void {
-  const document = dom.window.document
-  const pictures = document.querySelectorAll('picture')
+    // Apply additional processing for web mode (non-read mode)
+    // In read mode, we keep more modern attributes for better reading experience
+    if (!isReadMode) {
+      // Keep only essential attributes
+      const src = img.getAttribute('src')
+      const alt = img.getAttribute('alt')
+      const width = img.getAttribute('width')
+      const height = img.getAttribute('height')
+      const border = img.getAttribute('border')
 
-  pictures.forEach((picture) => {
-    // Find the img element inside the picture
-    const img = picture.querySelector('img')
-    if (!img) return // Skip if no img found
-
-    // Get all source elements
-    const sources = picture.querySelectorAll('source')
-    if (sources.length === 0) return // Skip if no sources
-
-    // Try to find a source with media that matches our target width (<=640px)
-    let selectedSrc = ''
-    let selectedSrcset = ''
-
-    // First, try to find a source with appropriate media query
-    for (const source of sources) {
-      const media = source.getAttribute('media')
-      const srcset = source.getAttribute('srcset')
-      const src = source.getAttribute('src')
-
-      // If we have a media attribute targeting mobile/small screens
-      if (
-        media &&
-        (media.includes('max-width') ||
-          media.includes('(width <') ||
-          media.includes('(width<=') ||
-          media.includes('(width <='))
-      ) {
-        // Use this source if it targets something close to our desired width
-        if (srcset) {
-          selectedSrcset = srcset
-          break
-        } else if (src) {
-          selectedSrc = src
-          break
-        }
+      // Clear all attributes
+      while (img.attributes.length > 0) {
+        img.removeAttribute(img.attributes[0].name)
       }
-    }
 
-    // If no appropriate media query was found, take the first source
-    if (!selectedSrc && !selectedSrcset) {
-      const firstSource = sources[0]
-      selectedSrcset = firstSource.getAttribute('srcset') || ''
-      selectedSrc = firstSource.getAttribute('src') || ''
-    }
-
-    // Process the selected source
-    if (selectedSrcset) {
-      const bestSrc = selectSourceFromSrcset(selectedSrcset)
-      if (bestSrc) {
-        const absoluteSrc = getAbsoluteUrl(bestSrc, baseUrl)
-        img.setAttribute('src', `/image_proxy?url=${encodeURIComponent(absoluteSrc)}`)
-      }
-    } else if (selectedSrc) {
-      const absoluteSrc = getAbsoluteUrl(selectedSrc, baseUrl)
-      img.setAttribute('src', `/image_proxy?url=${encodeURIComponent(absoluteSrc)}`)
-    }
-
-    // Set max width constraint
-    constrainImageSize(img)
-
-    // Replace the picture element with just the img
-    if (picture.parentNode) {
-      picture.parentNode.replaceChild(img, picture)
+      // Add back only essential attributes
+      if (src) img.setAttribute('src', src)
+      if (alt) img.setAttribute('alt', alt)
+      if (width) img.setAttribute('width', width)
+      if (height) img.setAttribute('height', height)
+      if (border) img.setAttribute('border', border)
     }
   })
 }
 
-// Constrain image size to maximum width of 640px
+// Constrain image size to maximum width from config
 function constrainImageSize(img: Element): void {
-  const MAX_WIDTH = 640
+  const MAX_WIDTH = TARGET_WIDTH
 
   // Get current width/height attributes
   let width = img.getAttribute('width')
@@ -307,7 +254,7 @@ function constrainImageSize(img: Element): void {
     img.setAttribute('width', MAX_WIDTH.toString())
 
     // Adjust height proportionally if available
-    if (originalHeight && originalWidth) {
+    if (originalHeight != null && originalWidth != null) {
       const scaledHeight = Math.round((originalHeight * MAX_WIDTH) / originalWidth)
       img.setAttribute('height', scaledHeight.toString())
     }
@@ -326,7 +273,7 @@ export function selectSourceFromSrcset(srcset: string): string {
     const sources = srcset.split(',').map((src) => src.trim())
 
     // Target width for vintage computers (aim for medium-sized images)
-    const targetWidth = 640
+    const targetWidth = VIEWPORT_WIDTH
 
     // Parse each source and extract URL and descriptor
     const parsedSources = sources.map((source) => {
@@ -383,8 +330,9 @@ export function processLinksForProxy(dom: JSDOM, baseUrl: string, isReadMode = f
         const absoluteHref = getAbsoluteUrl(href, baseUrl)
 
         // Add read parameter if in reading mode
-        const readParam = isReadMode ? '&read=true' : ''
-        link.setAttribute('href', `/proxy?url=${encodeURIComponent(absoluteHref)}${readParam}`)
+        const readParam = isReadMode ? 'read=true&' : ''
+        const proxyUrl = getAppUrl(`/proxy?${readParam}url=${encodeURIComponent(absoluteHref)}`)
+        link.setAttribute('href', proxyUrl)
       } catch (error) {
         console.error(`Error processing link: ${href}`, error)
       }
@@ -398,7 +346,12 @@ export function processLinksForProxy(dom: JSDOM, baseUrl: string, isReadMode = f
     if (action) {
       try {
         // Skip forms that already point to our proxy
-        if (action.startsWith('/proxy') || action === '/') {
+        const appBaseUrl = new URL(getAppUrl('/')).origin
+        if (
+          action.startsWith('/proxy') ||
+          action === '/' ||
+          action.startsWith(`${appBaseUrl}/proxy`)
+        ) {
           return
         }
 
@@ -406,7 +359,8 @@ export function processLinksForProxy(dom: JSDOM, baseUrl: string, isReadMode = f
         const absoluteAction = getAbsoluteUrl(action, baseUrl)
 
         // Set action to our proxy endpoint
-        form.setAttribute('action', '/proxy')
+        const proxyUrl = getAppUrl('/proxy')
+        form.setAttribute('action', proxyUrl)
 
         // Add a hidden field with the original form action
         const hiddenField = document.createElement('input')
@@ -424,64 +378,6 @@ export function processLinksForProxy(dom: JSDOM, baseUrl: string, isReadMode = f
   })
 }
 
-// Process images with vintage browser friendly attributes
-export function processImagesVintage(dom: JSDOM, baseUrl: string): void {
-  // First use the shared function to handle URLs properly
-  processImagesForProxy(dom, baseUrl)
-
-  const document = dom.window.document
-  const images = document.querySelectorAll('img')
-
-  images.forEach((img) => {
-    // Remove modern attributes
-    removeModernAttributesFromElement(img)
-
-    // Keep only essential attributes
-    const src = img.getAttribute('src')
-    const alt = img.getAttribute('alt')
-    const width = img.getAttribute('width')
-    const height = img.getAttribute('height')
-    const border = img.getAttribute('border')
-
-    // Clear all attributes
-    while (img.attributes.length > 0) {
-      img.removeAttribute(img.attributes[0].name)
-    }
-
-    // Add back only essential attributes
-    if (src) img.setAttribute('src', src)
-    if (alt) img.setAttribute('alt', alt)
-
-    // Add constrained width and height
-    const MAX_WIDTH = 640
-
-    if (width) {
-      const originalWidth = parseInt(width, 10)
-      // If width exceeds the max, scale it down
-      if (originalWidth > MAX_WIDTH) {
-        img.setAttribute('width', MAX_WIDTH.toString())
-
-        // Scale height proportionally if available
-        if (height) {
-          const originalHeight = parseInt(height, 10)
-          const scaledHeight = Math.round((originalHeight * MAX_WIDTH) / originalWidth)
-          img.setAttribute('height', scaledHeight.toString())
-        }
-      } else {
-        // Use original dimensions if they're below the max
-        img.setAttribute('width', width)
-        if (height) img.setAttribute('height', height)
-      }
-    } else {
-      // If no width specified, apply a default max width
-      img.setAttribute('width', MAX_WIDTH.toString())
-      if (height) img.setAttribute('height', height)
-    }
-
-    if (border) img.setAttribute('border', border)
-  })
-}
-
 // Add the Crashnet header to the document
 export function addCrashnetHeader(dom: JSDOM, url: string): void {
   const document = dom.window.document
@@ -493,6 +389,9 @@ export function addCrashnetHeader(dom: JSDOM, url: string): void {
 // Replace modern tags with vintage equivalents
 export function replaceModernTags(dom: JSDOM): void {
   const document = dom.window.document
+
+  // First, process <picture> elements before any other transformations
+  processPictureElements(dom)
 
   function replaceTagsInElement(element: Element): void {
     // Get all child nodes
@@ -528,6 +427,63 @@ export function replaceModernTags(dom: JSDOM): void {
   }
 
   replaceTagsInElement(document.body)
+}
+
+function processPictureElements(dom: JSDOM): void {
+  const document = dom.window.document
+  const pictures = document.querySelectorAll('picture')
+
+  pictures.forEach((picture) => {
+    const img = picture.querySelector('img')
+    if (!img) return
+
+    const sources = picture.querySelectorAll('source')
+    if (sources.length === 0) return
+
+    let selectedSrc = ''
+    let selectedSrcset = ''
+
+    for (const source of sources) {
+      const media = source.getAttribute('media')
+      const srcset = source.getAttribute('srcset')
+      const src = source.getAttribute('src')
+
+      if (
+        media &&
+        (media.includes('max-width') ||
+          media.includes('(width <') ||
+          media.includes('(width<=') ||
+          media.includes('(width <='))
+      ) {
+        if (srcset) {
+          selectedSrcset = srcset
+          break
+        } else if (src) {
+          selectedSrc = src
+          break
+        }
+      }
+    }
+
+    if (!selectedSrc && !selectedSrcset) {
+      const firstSource = sources[0]
+      selectedSrcset = firstSource.getAttribute('srcset') || ''
+      selectedSrc = firstSource.getAttribute('src') || ''
+    }
+
+    if (selectedSrcset) {
+      const bestSrc = selectSourceFromSrcset(selectedSrcset)
+      if (bestSrc) {
+        img.setAttribute('src', bestSrc)
+      }
+    } else if (selectedSrc) {
+      img.setAttribute('src', selectedSrc)
+    }
+
+    if (picture.parentNode) {
+      picture.parentNode.replaceChild(img, picture)
+    }
+  })
 }
 
 // Remove scripts from the document
@@ -567,8 +523,8 @@ export function removeIframes(dom: JSDOM): void {
   iframes.forEach((iframe) => iframe.remove())
 }
 
-// Remove SVGs from the document
-export function handleSVGs(dom: JSDOM): void {
+// Process SVGs and convert them to images using the image proxy
+export function handleSVGs(dom: JSDOM, baseUrl: string): void {
   const document = dom.window.document
   const svgs = document.querySelectorAll('svg')
   svgs.forEach((svg) => {
@@ -576,15 +532,32 @@ export function handleSVGs(dom: JSDOM): void {
     const width = svg.getAttribute('width') || '100'
     const height = svg.getAttribute('height') || '100'
 
-    // Create a black div as placeholder
-    const placeholder = document.createElement('img')
-    placeholder.setAttribute('bgcolor', 'black')
-    placeholder.setAttribute('width', width)
-    placeholder.setAttribute('height', height)
-    placeholder.setAttribute('title', 'SVG Image (not supported)')
+    // Create serialized SVG string for the placeholder image
+    const serializer = new dom.window.XMLSerializer()
+    const svgString = serializer.serializeToString(svg)
+    const svgURL = 'data:image/svg+xml;base64,' + btoa(svgString)
 
-    // Replace the SVG with the placeholder
-    svg.parentNode?.replaceChild(placeholder, svg)
+    // Create an img tag as replacement
+    const imgElement = document.createElement('img')
+    imgElement.setAttribute('width', width)
+    imgElement.setAttribute('height', height)
+
+    try {
+      // Create proxy URL for the SVG
+      const proxyUrl = getAppUrl(`/image_proxy?url=${encodeURIComponent(svgURL)}`)
+      imgElement.setAttribute('src', proxyUrl)
+      imgElement.setAttribute('alt', 'SVG Image')
+
+      // Apply size constraints to ensure rendering compatibility
+      constrainImageSize(imgElement)
+    } catch (error) {
+      console.error('Error creating proxy URL for SVG:', error)
+      // Fallback for error cases
+      imgElement.setAttribute('alt', 'SVG Image (conversion failed)')
+    }
+
+    // Replace the SVG with the img element
+    svg.parentNode?.replaceChild(imgElement, svg)
   })
 }
 

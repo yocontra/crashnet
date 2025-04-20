@@ -1,5 +1,5 @@
-// Disable all automatic optimizations
 export const dynamic = 'force-static'
+import { TARGET_WIDTH } from '@/lib/config'
 
 export default function HomePage() {
   return (
@@ -17,7 +17,7 @@ export default function HomePage() {
             <input type="submit" value="Go" />
           </form>
           <br />
-          <hr width="50%" />
+          <hr width={TARGET_WIDTH / 2} />
           <br />
           <p>
             Crashnet strips modern web elements to make sites accessible on vintage computers.

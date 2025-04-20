@@ -5,7 +5,6 @@ import { minify } from 'html-minifier-terser'
 
 export const dynamic = 'force-dynamic'
 
-// HTML minification options
 const HTML_MINIFY_OPTIONS = {
   collapseWhitespace: true,
   removeComments: true,
@@ -67,7 +66,7 @@ export default async function ProxyPage(props: ProxyPageProps) {
     const htmlContent = await fetchURL(normalizedUrl, {}, !isReadMode)
 
     // Parse the HTML into a DOM
-    const dom = parseHTML(htmlContent)
+    const dom = parseHTML(htmlContent, normalizedUrl)
 
     // Process content based on mode
     let processedDom

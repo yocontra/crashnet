@@ -4,7 +4,7 @@ import {
   handleAudioTags,
   handleVideoTags,
   handleSVGs,
-  processImagesVintage,
+  handleImages,
   processLinksForProxy,
   removeIframes,
   removeMetaTags,
@@ -15,26 +15,23 @@ import {
   replaceModernTags,
 } from './dom'
 
-// Main function to simplify DOM for vintage browsers
 export async function simplify(dom: JSDOM, url: string): Promise<JSDOM> {
-  // Clone the DOM to avoid modifying the original
   const clonedDom = new JSDOM(dom.serialize())
 
-  // Apply transformations
-  replaceModernTags(clonedDom)
   removeScripts(clonedDom)
   removeStyles(clonedDom)
   removeMetaTags(clonedDom)
+
   setBodyAttributes(clonedDom)
-  processImagesVintage(clonedDom, url)
+  replaceModernTags(clonedDom)
+  handleImages(clonedDom, url, false)
   processLinksForProxy(clonedDom, url)
   removeIframes(clonedDom)
-  handleSVGs(clonedDom)
   handleVideoTags(clonedDom)
   handleAudioTags(clonedDom, url)
+  handleSVGs(clonedDom, url)
   removeModernAttributesFromAll(clonedDom)
 
-  // Add our header
   addCrashnetHeader(clonedDom, url)
   return clonedDom
 }

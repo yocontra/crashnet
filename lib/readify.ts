@@ -1,7 +1,7 @@
 import { JSDOM } from 'jsdom'
 import { Readability } from '@mozilla/readability'
 import { getCrashnetHeader } from './header'
-import { processImagesForProxy, processLinksForProxy } from './dom'
+import { handleImages, processLinksForProxy } from './dom'
 
 export interface ReadableResult {
   title: string
@@ -44,7 +44,7 @@ export async function readify(dom: JSDOM, url: string): Promise<JSDOM> {
   )
 
   // Process URLs for images and links
-  processImagesForProxy(articleDom, url)
+  handleImages(articleDom, url, true) // Use handleImages with isReadMode=true
   processLinksForProxy(articleDom, url, true) // Pass true for isReadMode
 
   return articleDom
