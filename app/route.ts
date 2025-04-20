@@ -8,11 +8,11 @@ export async function GET() {
   const homepage = `<!DOCTYPE html>
   <html>
     <head>
-      <title>Crashnet - Browse</title>
+      <title>CrashNet - Browse</title>
     </head>
     <body bgcolor="white" text="black">
       <center>
-        <h1>CRASHNET</h1>
+        <h1><font face="Courier">CrashNet</font></h1>
         <p>Web Proxy for Vintage Computers</p>
         <br />
         <form action="/proxy" method="get">
@@ -23,7 +23,7 @@ export async function GET() {
         <hr width="${TARGET_WIDTH / 2}" />
         <br />
         <p>
-          Crashnet strips modern web elements to make sites accessible on vintage computers.
+          CrashNet strips modern web elements to make sites accessible on vintage computers.
           <br />
           No SSL, CSS, JavaScript - just pure HTML content.
         </p>

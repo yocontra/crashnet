@@ -1,9 +1,9 @@
 import { PlaywrightPage } from '../fetch'
-import { getCrashnetHeader } from '../header'
+import { getCrashNetHeader } from '../header'
 
-// Add the Crashnet header to the document
-export async function addCrashnetHeader(pw: PlaywrightPage, url: string): Promise<void> {
-  const header = getCrashnetHeader(url, false)
+// Add the CrashNet header to the document
+export async function addCrashNetHeader(pw: PlaywrightPage, url: string): Promise<void> {
+  const header = getCrashNetHeader(url, false)
   await pw.page.evaluate(
     (params) => {
       const { header } = params

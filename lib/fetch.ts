@@ -6,21 +6,13 @@ import { VIEWPORT_WIDTH, VIEWPORT_HEIGHT } from './config'
 // Define base URL for the application - should be determined at runtime from request
 export const APP_BASE_URL = process.env.NEXT_PUBLIC_APP_BASE_URL || ''
 
-// Common headers for fetching content
-const VINTAGE_BROWSER_HEADERS = {
-  'User-Agent': 'Mozilla/4.0 (compatible; MSIE 5.0; Mac_PowerPC)',
-  Accept: 'text/html,text/plain',
+const BROWSER_HEADERS = {
+  'User-Agent':
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:137.0) Gecko/20100101 Firefox/137.0',
+  Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
   'Accept-Language': 'en-US,en;q=0.5',
-  'Accept-Encoding': 'identity',
-  'X-Requested-With': 'XMLHttpRequest',
   'Save-Data': 'on',
   DNT: '1',
-}
-
-const MODERN_BROWSER_HEADERS = {
-  'User-Agent': 'Mozilla/5.0 (compatible; Crashnet/1.0; +http://crashnet.example)',
-  Accept: 'text/html,application/xhtml+xml,application/xml',
-  'Accept-Language': 'en-US,en;q=0.9',
 }
 
 // Options for fetch functions
@@ -71,27 +63,22 @@ export function normalizeUrl(url: string, useHttpCompatibility = true): string {
 }
 
 // Function to fetch a URL with options
-export async function fetchURL(
-  url: string,
-  options: FetchOptions = {},
-  useVintageHeaders = true
-): Promise<string> {
+export async function fetchURL(url: string, options: FetchOptions = {}): Promise<string> {
   const { method = 'GET', formData = null, headers = {} } = options
-
-  // Choose header set based on mode
-  const baseHeaders = useVintageHeaders ? VINTAGE_BROWSER_HEADERS : MODERN_BROWSER_HEADERS
 
   // Merge headers
   const mergedHeaders = {
-    ...baseHeaders,
+    ...BROWSER_HEADERS,
     ...headers,
   }
+
+  const isForm = method === 'POST' && formData
 
   // Perform the fetch
   const response = await fetch(url, {
     method,
     headers: mergedHeaders,
-    body: method === 'POST' && formData ? formData : undefined,
+    body: isForm ? formData : undefined,
   })
 
   if (!response.ok) {
@@ -153,7 +140,7 @@ async function getBrowser(): Promise<Browser> {
 export async function loadPage(html: string, baseUrl?: string): Promise<PlaywrightPage> {
   const browser = await getBrowser()
   const context = await browser.newContext({
-    userAgent: 'Mozilla/5.0 (compatible; Crashnet/1.0; +http://crashnet.example)',
+    userAgent: 'Mozilla/5.0 (compatible; CrashNet/1.0; +http://crashnet.example)',
     viewport: { width: VIEWPORT_WIDTH, height: VIEWPORT_HEIGHT },
     deviceScaleFactor: 1, // Low DPI to prefer low resolution images
     ignoreHTTPSErrors: true,

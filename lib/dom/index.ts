@@ -33,4 +33,4 @@ export {
 export { preserveComputed } from './style-processors'
 
 // Header functionality
-export { addCrashnetHeader } from './header'
+export { addCrashNetHeader } from './header'

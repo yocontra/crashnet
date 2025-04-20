@@ -20,15 +20,9 @@ export async function handleVideoTags(pw: PlaywrightPage): Promise<void> {
       placeholder.setAttribute('bgcolor', 'black')
       placeholder.setAttribute('width', width)
       placeholder.setAttribute('height', height)
-      placeholder.innerHTML = `
-        <table width="100%" height="100%" bgcolor="black">
-          <tr>
-            <td align="center" valign="middle">
-              <font color="white">Video is not supported</font>
-            </td>
-          </tr>
-        </table>
-      `
+      placeholder.setAttribute('align', 'center')
+      placeholder.setAttribute('border', '1')
+      placeholder.innerHTML = '&nbsp;&nbsp;<b>Video is not supported</b>&nbsp;&nbsp;'
 
       // Replace the video with the placeholder
       video.parentNode?.replaceChild(placeholder, video)

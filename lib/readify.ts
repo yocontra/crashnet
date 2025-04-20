@@ -1,6 +1,6 @@
 import { readFile } from 'fs/promises'
 import { join } from 'path'
-import { getCrashnetHeader } from './header'
+import { getCrashNetHeader } from './header'
 import { handleImages, processLinksForProxy, handleSVGs, processPictureElements } from './dom'
 import { PlaywrightPage } from './fetch'
 
@@ -48,7 +48,7 @@ export async function readify(
   const { title, content } = article
 
   // Create header outside of browser context
-  const header = getCrashnetHeader(url, true)
+  const header = getCrashNetHeader(url, true)
 
   // Set the article content directly in the current page
   await pwPage.page.evaluate(

@@ -25,7 +25,7 @@ export function middleware(request: NextRequest) {
     `<!DOCTYPE html>
     <html>
       <head>
-        <title>Crashnet - Not Found</title>
+        <title>CrashNet - Not Found</title>
       </head>
       <body bgcolor="white" text="black">
         <center>

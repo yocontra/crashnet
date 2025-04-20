@@ -77,18 +77,37 @@ export async function processLinksForProxy(
             absoluteAction = url.toString()
           }
 
-          // Set action to our proxy endpoint
-          form.setAttribute('action', `${appBaseUrl}/proxy`)
+          // Preserve the original form method (GET or POST)
+          const method = form.getAttribute('method')?.toLowerCase() || 'get'
+          form.setAttribute('method', method)
 
-          // Add a hidden field with the original form action
-          const hiddenField = document.createElement('input')
-          hiddenField.setAttribute('type', 'hidden')
-          hiddenField.setAttribute('name', 'x-form-action')
-          hiddenField.setAttribute('value', encodeURIComponent(absoluteAction))
-          form.appendChild(hiddenField)
+          if (method === 'post') {
+            // For POST forms, we can include the parameters in the action URL
+            const readParam = isReadMode ? 'read=true&' : ''
+            form.setAttribute(
+              'action',
+              `${appBaseUrl}/proxy?${readParam}url=${encodeURIComponent(absoluteAction)}`
+            )
+          } else {
+            // For GET forms, we need to add hidden inputs since query params would be overwritten
+            form.setAttribute('action', `${appBaseUrl}/proxy`)
 
-          // Ensure method is POST for external form submissions
-          form.setAttribute('method', 'post')
+            // Add hidden input for the target URL
+            const urlField = document.createElement('input')
+            urlField.setAttribute('type', 'hidden')
+            urlField.setAttribute('name', 'url')
+            urlField.setAttribute('value', absoluteAction)
+            form.appendChild(urlField)
+
+            // Add hidden input for read mode if needed
+            if (isReadMode) {
+              const readField = document.createElement('input')
+              readField.setAttribute('type', 'hidden')
+              readField.setAttribute('name', 'read')
+              readField.setAttribute('value', 'true')
+              form.appendChild(readField)
+            }
+          }
         } catch (error) {
           console.error(`Error processing form action: ${action}`, error)
         }

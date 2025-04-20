@@ -1,6 +1,6 @@
 import { PlaywrightPage } from './fetch'
 import {
-  addCrashnetHeader,
+  addCrashNetHeader,
   handleAudioTags,
   handleVideoTags,
   handleSVGs,
@@ -43,6 +43,6 @@ export async function simplify(
   await removeUnwantedElements(pwPage)
   await removeModernAttributesFromAll(pwPage)
 
-  await addCrashnetHeader(pwPage, url)
+  await addCrashNetHeader(pwPage, url)
   return pwPage
 }

@@ -7,8 +7,17 @@ import { minify } from '@/lib/dom/minify'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
-  const url = request.nextUrl.searchParams.get('url')
-  const read = request.nextUrl.searchParams.get('read')
+  return handleProxyRequest(request, 'GET')
+}
+
+export async function POST(request: NextRequest) {
+  return handleProxyRequest(request, 'POST')
+}
+
+async function handleProxyRequest(request: NextRequest, method: 'GET' | 'POST') {
+  const requestUrl = request.nextUrl
+  const url = requestUrl.searchParams.get('url')
+  const read = requestUrl.searchParams.get('read')
   const isReadMode = read === 'true'
 
   // Get base URL from request
@@ -16,12 +25,33 @@ export async function GET(request: NextRequest) {
   const host = request.headers.get('host') || request.headers.get('x-forwarded-host')
   const baseUrl = `${protocol}://${host}`
 
+  // Handle extra query parameters and append them to the target URL if needed
+  let targetUrl = url
+  if (targetUrl && method === 'GET') {
+    try {
+      const targetUrlObj = new URL(targetUrl)
+      const targetParams = targetUrlObj.searchParams
+      const originalParams = requestUrl.searchParams
+
+      // Copy all params except 'url' and 'read' to the target URL
+      for (const [key, value] of originalParams.entries()) {
+        if (key !== 'url' && key !== 'read') {
+          targetParams.append(key, value)
+        }
+      }
+
+      targetUrl = targetUrlObj.toString()
+    } catch (error) {
+      console.error('Error processing URL and query parameters:', error)
+    }
+  }
+
   if (!url) {
     return new NextResponse(
       await minify(`<!DOCTYPE html>
       <html>
         <head>
-          <title>Crashnet - Error</title>
+          <title>CrashNet - Error</title>
         </head>
         <body bgcolor="white" text="black">
           <center>
@@ -43,10 +73,26 @@ export async function GET(request: NextRequest) {
 
   try {
     // Normalize URL (don't force HTTP in reader mode)
-    const normalizedUrl = normalizeUrl(url, !isReadMode)
+    const normalizedUrl = normalizeUrl(targetUrl || url, !isReadMode)
+
+    // Prepare fetchOptions
+    const fetchOptions: { method: string; formData?: FormData | null } = {
+      method: method,
+    }
+
+    // If this is a POST request, extract form data
+    if (method === 'POST') {
+      try {
+        // Parse the form data from the request
+        const formData = await request.formData()
+        fetchOptions.formData = formData
+      } catch (error) {
+        console.error('Error parsing form data:', error)
+      }
+    }
 
     // Fetch the content with appropriate headers based on mode
-    const htmlContent = await fetchURL(normalizedUrl, {}, !isReadMode)
+    const htmlContent = await fetchURL(normalizedUrl, fetchOptions, !isReadMode)
 
     // Parse the HTML into a DOM
     const dom = await loadPage(htmlContent, normalizedUrl)
@@ -116,7 +162,7 @@ export async function GET(request: NextRequest) {
       await minify(`<!DOCTYPE html>
       <html>
         <head>
-          <title>Crashnet - Error</title>
+          <title>CrashNet - Error</title>
         </head>
         <body bgcolor="white" text="black">
           <center>
