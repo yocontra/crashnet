@@ -1,6 +1,7 @@
-import { Browser, Page, chromium } from 'playwright'
+import { Browser, Page, chromium as pChromium } from 'playwright'
 import { PlaywrightBlocker } from '@ghostery/adblocker-playwright'
 import { fetch as crossFetch } from 'cross-fetch'
+import chromium from '@sparticuz/chromium'
 import { VIEWPORT_WIDTH, VIEWPORT_HEIGHT } from './config'
 
 // Define base URL for the application - should be determined at runtime from request
@@ -129,10 +130,18 @@ async function initializeBlocker(): Promise<PlaywrightBlocker> {
 // Get a browser instance with a singleton pattern
 async function getBrowser(): Promise<Browser> {
   if (!browserInstance) {
-    // Launch browser with headless mode
-    browserInstance = await chromium.launch({
-      headless: true,
-    })
+    // Use special non-UI chrome on vercel
+    if (process.env.NODE_ENV === 'production') {
+      browserInstance = await pChromium.launch({
+        args: chromium.args,
+        executablePath: await chromium.executablePath(),
+        headless: true,
+      })
+    } else {
+      browserInstance = await pChromium.launch({
+        headless: true,
+      })
+    }
   }
   return browserInstance
 }

@@ -12,6 +12,7 @@
   "dependencies": {
     "@ghostery/adblocker-playwright": "^2.5.1",
     "@mozilla/readability": "^0.6.0",
+    "@sparticuz/chromium": "^133.0.0",
     "cross-fetch": "^4.1.0",
     "html-minifier-terser": "latest",
     "next": "15.2.4",
