@@ -20,32 +20,6 @@ async function handleProxyRequest(request: NextRequest, method: 'GET' | 'POST') 
   const read = requestUrl.searchParams.get('read')
   const isReadMode = read === 'true'
 
-  // Get base URL from request
-  const protocol = request.headers.get('x-forwarded-proto') || 'http'
-  const host = request.headers.get('host') || request.headers.get('x-forwarded-host')
-  const baseUrl = `${protocol}://${host}`
-
-  // Handle extra query parameters and append them to the target URL if needed
-  let targetUrl = url
-  if (targetUrl && method === 'GET') {
-    try {
-      const targetUrlObj = new URL(targetUrl)
-      const targetParams = targetUrlObj.searchParams
-      const originalParams = requestUrl.searchParams
-
-      // Copy all params except 'url' and 'read' to the target URL
-      for (const [key, value] of originalParams.entries()) {
-        if (key !== 'url' && key !== 'read') {
-          targetParams.append(key, value)
-        }
-      }
-
-      targetUrl = targetUrlObj.toString()
-    } catch (error) {
-      console.error('Error processing URL and query parameters:', error)
-    }
-  }
-
   if (!url) {
     return new NextResponse(
       await minify(`<!DOCTYPE html>
@@ -71,10 +45,33 @@ async function handleProxyRequest(request: NextRequest, method: 'GET' | 'POST') 
     )
   }
 
-  try {
-    // Normalize URL (don't force HTTP in reader mode)
-    const normalizedUrl = normalizeUrl(targetUrl || url, !isReadMode)
+  // Get base URL from request (if host header was sent, most old browsers do not)
+  const host = request.headers.get('host')
+  const baseUrl = host ? `http://${host}` : ''
 
+  let normalizedUrl = normalizeUrl(url, !isReadMode)
+
+  // Handle extra query parameters and append them to the target URL if needed
+  if (method === 'GET') {
+    try {
+      const targetUrlObj = new URL(normalizedUrl)
+      const targetParams = targetUrlObj.searchParams
+      const originalParams = requestUrl.searchParams
+
+      // Copy all params except 'url' and 'read' to the target URL
+      for (const [key, value] of originalParams.entries()) {
+        if (key !== 'url' && key !== 'read') {
+          targetParams.append(key, value)
+        }
+      }
+
+      normalizedUrl = targetUrlObj.toString()
+    } catch (error) {
+      console.error('Error processing URL and query parameters:', error)
+    }
+  }
+
+  try {
     // Prepare fetchOptions
     const fetchOptions: { method: string; formData?: FormData | null } = {
       method: method,
@@ -92,7 +89,7 @@ async function handleProxyRequest(request: NextRequest, method: 'GET' | 'POST') 
     }
 
     // Fetch the content with appropriate headers based on mode
-    const htmlContent = await fetchURL(normalizedUrl, fetchOptions, !isReadMode)
+    const htmlContent = await fetchURL(normalizedUrl, fetchOptions)
 
     // Parse the HTML into a DOM
     const dom = await loadPage(htmlContent, normalizedUrl)
