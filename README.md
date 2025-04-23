@@ -21,19 +21,17 @@ A minimalist web proxy service designed for vintage computers like 68k Macintosh
 
 - Switching between reading and web mode messes up the URL sometimes on the second change
 - Finish/test: POST /proxy for form support (test using google.com search)
-- Emoji -> svg/png via imagemoji or twemoji
-- Display flex is not working with our inline detection
+- Emoji -> svg/png via imagemoji
+- Display flex is not working with our inline -> span transformer
 - video rendering by pulling the first frame, clicking it would go to download
-- Incorporate an adblocker to hide even more crap
-- Some images are going 520x520 for no reason
-- Lots of empty buttons on some sites
+- canvas rendering by pulling the first frame
 - We can use dom.window.getComputedStyle! Things we can move from CSS/styles to DOM properties:
   - Font color
   - Background color
   - Height/width
   - Border (sometimes)
   - Font
-- Support some kind of cookie jar w/ accounts or unique ids
+- Support some kind of cookie jar w/ accounts or unique ids when in hosted mode
 
 ## Getting Started
 
