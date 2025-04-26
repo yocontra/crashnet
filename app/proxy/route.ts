@@ -155,6 +155,17 @@ async function handleProxyRequest(request: NextRequest, method: 'GET' | 'POST') 
     // Error handling
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     console.error(error)
+    
+    // Create detailed error object for display
+    const errorObj = {
+      message: errorMessage,
+      url: normalizedUrl,
+      method: method,
+      timestamp: new Date().toISOString()
+    }
+    
+    const jsonError = JSON.stringify(errorObj, null, 2)
+    
     return new NextResponse(
       await minify(`<!DOCTYPE html>
       <html>
@@ -164,10 +175,15 @@ async function handleProxyRequest(request: NextRequest, method: 'GET' | 'POST') 
         <body bgcolor="white" text="black">
           <center>
             <h1>Error Fetching URL</h1>
-            <p>${errorMessage}</p>
-            <p>
-              <a href="/">Return to Homepage</a>
-            </p>
+          </center>
+          <div>
+            <font face="Monaco">
+              <pre border="1" width="200px">${jsonError}</pre>
+            </font>
+          </div>
+          <center>
+            <a href="/">Return to Homepage</a>
+          </center>
           </center>
         </body>
       </html>`),
