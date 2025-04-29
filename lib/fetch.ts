@@ -63,8 +63,16 @@ export function normalizeUrl(url: string, useHttpCompatibility = true): string {
   return useHttpCompatibility ? normalizedUrl.replace('https://', 'http://') : normalizedUrl
 }
 
+// Response with content info
+export interface ContentResponse {
+  content: string
+  contentType: string
+  isHtml: boolean
+  originalResponse?: Response
+}
+
 // Function to fetch a URL with options
-export async function fetchURL(url: string, options: FetchOptions = {}): Promise<string> {
+export async function fetchURL(url: string, options: FetchOptions = {}): Promise<ContentResponse> {
   const { method = 'GET', formData = null, headers = {} } = options
 
   // Merge headers
@@ -86,7 +94,13 @@ export async function fetchURL(url: string, options: FetchOptions = {}): Promise
     throw new Error(`Failed to fetch URL: ${response.status} ${response.statusText}`)
   }
 
-  return response.text()
+  // Get content type from response
+  const contentType = response.headers.get('content-type') || 'text/html'
+  const isHtml = contentType.includes('text/html') || contentType.includes('application/xhtml+xml')
+
+  // For HTML content, return as text
+  const content = await response.text()
+  return { content, contentType, isHtml, originalResponse: response }
 }
 
 // PlaywrightPage interface to match the JSDOM interface for compatibility

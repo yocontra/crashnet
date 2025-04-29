@@ -31,6 +31,11 @@ function isTransparentFormat(url: string): boolean {
   return false
 }
 
+// Helper function to check if content is an image
+function isImageContentType(contentType: string): boolean {
+  return contentType.startsWith('image/')
+}
+
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
@@ -47,10 +52,15 @@ export async function GET(request: NextRequest) {
 
   try {
     let buffer: Buffer
+    let contentType: string = 'application/octet-stream'
 
     if (url.startsWith('data:')) {
       try {
-        // Extract base64 data more carefully - find the first comma that divides MIME type from data
+        // Extract MIME type
+        const mimeMatch = url.match(/^data:([^;,]+)/)
+        contentType = mimeMatch ? mimeMatch[1] : 'application/octet-stream'
+
+        // Extract base64 data
         const dataStartIndex = url.indexOf(',')
         if (dataStartIndex === -1) {
           throw new Error('Invalid data URL format - no comma found')
@@ -69,14 +79,25 @@ export async function GET(request: NextRequest) {
       const response = await fetch(normalizedUrl)
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`)
+        throw new Error(`Failed to fetch resource: ${response.status} ${response.statusText}`)
       }
 
+      contentType = response.headers.get('content-type') || 'application/octet-stream'
       const arrayBuffer = await response.arrayBuffer()
       buffer = Buffer.from(arrayBuffer)
     }
 
-    // Determine the appropriate output format
+    // If not an image, return the content as-is
+    if (!isImageContentType(contentType)) {
+      return new NextResponse(buffer, {
+        headers: {
+          'Content-Type': contentType,
+          'Cache-Control': 'public, max-age=86400',
+        },
+      })
+    }
+
+    // For images, process them
     const useTransparency = isTransparentFormat(url)
 
     // Process the image based on format

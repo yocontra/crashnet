@@ -89,10 +89,20 @@ async function handleProxyRequest(request: NextRequest, method: 'GET' | 'POST') 
     }
 
     // Fetch the content with appropriate headers based on mode
-    const htmlContent = await fetchURL(normalizedUrl, fetchOptions)
+    const response = await fetchURL(normalizedUrl, fetchOptions)
+
+    // If not HTML content, redirect to image proxy
+    if (!response.isHtml) {
+      // Create image proxy URL
+      const imageProxyUrl = new URL('/image_proxy', baseUrl || request.url)
+      imageProxyUrl.searchParams.set('url', normalizedUrl)
+
+      // Redirect to image proxy
+      return NextResponse.redirect(imageProxyUrl.toString())
+    }
 
     // Parse the HTML into a DOM
-    const dom = await loadPage(htmlContent, normalizedUrl)
+    const dom = await loadPage(response.content, normalizedUrl)
 
     // Process content based on mode
     let processedDom
@@ -155,17 +165,17 @@ async function handleProxyRequest(request: NextRequest, method: 'GET' | 'POST') 
     // Error handling
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     console.error(error)
-    
+
     // Create detailed error object for display
     const errorObj = {
       message: errorMessage,
       url: normalizedUrl,
       method: method,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     }
-    
+
     const jsonError = JSON.stringify(errorObj, null, 2)
-    
+
     return new NextResponse(
       await minify(`<!DOCTYPE html>
       <html>
